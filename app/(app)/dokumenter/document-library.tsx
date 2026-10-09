@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetAction } from "@/components/ui/sheet";
 import { DOCUMENT_CATEGORIES } from "@/lib/config";
 import type { DocumentRow, Person } from "@/lib/types";
+import { useServerState } from "@/lib/use-server-state";
 import { cn, formatBytes, osloDateKey, dayLabel } from "@/lib/utils";
 
 import { deleteDocument, registerDocument, updateDocument } from "./actions";
@@ -46,7 +47,7 @@ function FileIcon({ doc }: { doc: DocumentRow }) {
 }
 
 export function DocumentLibrary({ documents, people }: { documents: DocumentRow[]; people: Person[] }) {
-  const [local, setLocal] = useState(documents);
+  const [local, setLocal, track] = useServerState(documents);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("alle");
   const [pending, setPending] = useState<File[] | null>(null);
@@ -56,7 +57,6 @@ export function DocumentLibrary({ documents, people }: { documents: DocumentRow[
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => setLocal(documents), [documents]);
 
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -120,22 +120,28 @@ export function DocumentLibrary({ documents, people }: { documents: DocumentRow[
     if (!name || name === doc.name) return;
     setLocal((prev) => prev.map((d) => (d.id === doc.id ? { ...d, name } : d)));
     setSelected(null);
-    const res = await updateDocument(doc.id, { name }).catch(() => ({ error: "Klarte ikke å gi nytt navn." }));
-    if (res.error) setError(res.error);
+    const res = await track(updateDocument(doc.id, { name })).catch(() => ({ error: "Klarte ikke å gi nytt navn." }));
+    if (res.error) {
+      setLocal((prev) => prev.map((d) => (d.id === doc.id ? { ...d, name: doc.name } : d)));
+      setError(res.error);
+    }
   }
 
   async function recategorize(doc: DocumentRow, category: string) {
     setLocal((prev) => prev.map((d) => (d.id === doc.id ? { ...d, category } : d)));
     setSelected({ ...doc, category });
-    const res = await updateDocument(doc.id, { category }).catch(() => ({ error: "Klarte ikke å flytte filen." }));
-    if (res.error) setError(res.error);
+    const res = await track(updateDocument(doc.id, { category })).catch(() => ({ error: "Klarte ikke å flytte filen." }));
+    if (res.error) {
+      setLocal((prev) => prev.map((d) => (d.id === doc.id ? { ...d, category: doc.category } : d)));
+      setError(res.error);
+    }
   }
 
   async function remove(doc: DocumentRow) {
     if (!window.confirm(`Slette «${doc.name}» for godt?`)) return;
     setSelected(null);
     setLocal((prev) => prev.filter((d) => d.id !== doc.id));
-    const res = await deleteDocument(doc.id).catch(() => ({ error: "Klarte ikke å slette." }));
+    const res = await track(deleteDocument(doc.id)).catch(() => ({ error: "Klarte ikke å slette." }));
     if (res.error) {
       setLocal((prev) => [doc, ...prev]);
       setError(res.error);

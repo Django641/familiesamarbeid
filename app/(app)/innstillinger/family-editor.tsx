@@ -75,6 +75,7 @@ function PersonSheet({ person, onClose, onError }: { person: Person | null; onCl
   const [name, setName] = useState("");
   const [color, setColor] = useState("");
   const [lastId, setLastId] = useState<string | null>(null);
+  if (!person && lastId !== null) setLastId(null);
   if (person && person.id !== lastId) {
     setLastId(person.id);
     setName(person.name);

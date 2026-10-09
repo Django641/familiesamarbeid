@@ -33,6 +33,7 @@ Se `docs/OPPSETT.md`.
 - [x] Ende-til-ende-test med to brukere (PGlite lokalt): oppstart, alle skjermer, live-synk på ~5 s, mørk modus
 - [x] Claude Code-oppsett: agenter med modellvalg, skills, regler, hooks
 - [x] Første `kvalitetskontroll`- og `produktutvikler`-runde
+- [x] Andre `kvalitetskontroll`-runde (etter Neon-byttet): opplastede HTML/SVG-filer kan ikke kjøre script, invitasjonskode kreves etter første konto, Face ID-registrering virker også etter første døgn, raske avkrysninger hopper ikke tilbake, angre-data valideres, låsrekkefølge ved AI-sortering
 
 ## 🧭 Beslutninger
 

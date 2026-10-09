@@ -12,10 +12,10 @@ import { authClient } from "@/lib/auth-client";
 
 type Mode = "login" | "signup";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, invite }: { next: string; invite: { email: string; code: string } | null }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<Mode>(invite ? "signup" : "login");
+  const [email, setEmail] = useState(invite?.email ?? "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,10 @@ export function LoginForm({ next }: { next: string }) {
     const { error: err } =
       mode === "login"
         ? await authClient.signIn.email({ email, password, rememberMe: true })
-        : await authClient.signUp.email({ email, password, name: email.split("@")[0] });
+        : await authClient.signUp.email(
+            { email, password, name: email.split("@")[0] },
+            invite ? { headers: { "x-invite-code": invite.code } } : undefined
+          );
     setBusy(false);
     if (err) {
       setError(translate(err.message ?? "", err.status));
@@ -79,6 +82,12 @@ export function LoginForm({ next }: { next: string }) {
       <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
         <span className="h-px flex-1 bg-[var(--color-border)]" /> eller <span className="h-px flex-1 bg-[var(--color-border)]" />
       </div>
+
+      {invite ? (
+        <p className="rounded-2xl bg-[var(--color-bg)] px-4 py-3 text-sm">
+          Du er invitert! Velg et passord for <strong>{invite.email}</strong>.
+        </p>
+      ) : null}
 
       <Segmented
         label="Velg"
@@ -150,6 +159,7 @@ export function LoginForm({ next }: { next: string }) {
 
 function translate(message: string, status?: number): string {
   const m = message.toLowerCase();
+  if (m.includes("invitasjon")) return "Du trenger en invitasjonslenke for å lage konto. Be den andre i familien sende den fra Innstillinger.";
   if (status === 403 || m.includes("tilgang")) return "Denne e-posten har ikke tilgang til appen.";
   if (m.includes("invalid email or password") || m.includes("invalid password")) return "Feil e-post eller passord.";
   if (m.includes("already exists") || m.includes("already")) return "Det finnes allerede en konto med denne e-posten. Logg inn i stedet.";

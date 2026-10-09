@@ -8,8 +8,12 @@ import { LoginForm } from "./login-form";
 
 export const metadata = { title: "Logg inn" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const [{ next }, session] = await Promise.all([searchParams, getSession()]);
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; epost?: string; invitasjon?: string }>;
+}) {
+  const [{ next, epost, invitasjon }, session] = await Promise.all([searchParams, getSession()]);
   if (session) redirect(safeNext(next));
 
   return (
@@ -18,7 +22,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <h1 className="text-3xl font-bold text-[var(--color-primary)]">{APP_NAME}</h1>
         <p className="mt-2 text-[var(--color-muted)]">{APP_TAGLINE}</p>
       </div>
-      <LoginForm next={safeNext(next)} />
+      <LoginForm
+        next={safeNext(next)}
+        invite={epost && invitasjon ? { email: epost.slice(0, 200), code: invitasjon.slice(0, 64) } : null}
+      />
     </main>
   );
 }

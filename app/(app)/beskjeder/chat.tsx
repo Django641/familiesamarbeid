@@ -55,7 +55,9 @@ export function Chat({ messages, people, userId }: { messages: Message[]; people
     try {
       const res = await sendMessage(body);
       if (res.error || !res.message) throw new Error(res.error);
-      setLocal((prev) => prev.map((m) => (m.id === temp.id ? res.message! : m)));
+      const saved = res.message;
+      // Kan allerede ha kommet inn via synk — unngå to rader med samme id.
+      setLocal((prev) => prev.filter((m) => m.id !== saved.id).map((m) => (m.id === temp.id ? saved : m)));
     } catch {
       setLocal((prev) => prev.map((m) => (m.id === temp.id ? { ...m, pending: false, failed: true } : m)));
     }
@@ -75,7 +77,11 @@ export function Chat({ messages, people, userId }: { messages: Message[]; people
       await send(m.body);
     } else if (action === "pin") {
       setLocal((prev) => prev.map((x) => (x.id === m.id ? { ...x, pinned: !m.pinned } : x)));
-      await setPinned(m.id, !m.pinned).catch(() => setNotice("Klarte ikke å lagre."));
+      const res = await setPinned(m.id, !m.pinned).catch(() => ({ error: "Klarte ikke å lagre." }));
+      if (res.error) {
+        setLocal((prev) => prev.map((x) => (x.id === m.id ? { ...x, pinned: m.pinned } : x)));
+        setNotice(res.error);
+      }
     } else if (action === "task") {
       const res = await messageToTask(m.id).catch(() => ({ error: "Klarte ikke å lage gjøremål." }));
       setNotice(res.error ?? "Lagt til som gjøremål ✓");
@@ -161,7 +167,6 @@ export function Chat({ messages, people, userId }: { messages: Message[]; people
                     <button
                       type="button"
                       onClick={() => setSelected(m)}
-                      aria-label={`Beskjed fra ${mine ? "deg" : author?.name ?? "ukjent"} kl. ${osloTime(m.created_at)}. Trykk for valg.`}
                       className={cn(
                         "max-w-[80%] rounded-3xl px-4 py-2.5 text-left text-[16px] leading-snug",
                         mine
@@ -173,6 +178,9 @@ export function Chat({ messages, people, userId }: { messages: Message[]; people
                         m.failed && "ring-2 ring-[var(--color-danger)]"
                       )}
                     >
+                      <span className="sr-only">
+                        {mine ? "Du" : (author?.name ?? "Ukjent")} kl. {osloTime(m.created_at)}:{" "}
+                      </span>
                       {m.pinned ? <Pin className="mr-1 inline h-3.5 w-3.5 -translate-y-px" aria-label="Festet" /> : null}
                       <span className="whitespace-pre-wrap break-words">{m.body}</span>
                       <span

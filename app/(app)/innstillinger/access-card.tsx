@@ -11,23 +11,23 @@ import { setPartnerPassword } from "./actions";
 
 /** Tilgang: hvem som kan lage konto, og nytt passord for den andre voksne. */
 export function AccessCard({
-  appUrl,
-  pending,
+  invites,
   partner,
 }: {
-  appUrl: string;
-  pending: string[];
+  invites: Array<{ email: string; url: string }>;
   partner: { id: string; name: string } | null;
 }) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function share() {
-    const url = appUrl || window.location.origin;
-    const text = `Logg inn på familieappen: ${url} — velg «Første gang» og lag konto med e-posten din.`;
-    if (navigator.share) await navigator.share({ text }).catch(() => {});
-    else await navigator.clipboard.writeText(text).catch(() => {});
+  async function share(url: string) {
+    const text = "Her er invitasjonen til familieappen vår. Åpne lenken og velg et passord:";
+    if (navigator.share) await navigator.share({ text, url }).catch(() => {});
+    else {
+      await navigator.clipboard.writeText(`${text} ${url}`).catch(() => {});
+      setMessage("Invitasjonslenken er kopiert.");
+    }
   }
 
   async function reset(e: React.FormEvent) {
@@ -46,16 +46,18 @@ export function AccessCard({
         <CardTitle className="text-base">Tilgang</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {pending.length > 0 ? (
-          <>
-            <p className="text-sm">
-              Venter på konto fra <strong>{pending.join(", ")}</strong>. Send lenken — hen velger «Første gang» og lager
-              konto med den e-posten.
-            </p>
-            <Button onClick={share}>
-              <Share2 className="h-4 w-4" aria-hidden /> Del lenke til appen
-            </Button>
-          </>
+        {invites.length > 0 ? (
+          invites.map((inv) => (
+            <div key={inv.email} className="flex flex-col gap-2">
+              <p className="text-sm">
+                <strong>{inv.email}</strong> har ikke laget konto ennå. Send invitasjonen — lenken virker bare for den
+                e-posten.
+              </p>
+              <Button onClick={() => share(inv.url)}>
+                <Share2 className="h-4 w-4" aria-hidden /> Send invitasjon
+              </Button>
+            </div>
+          ))
         ) : (
           <p className="text-sm text-[var(--color-muted)]">
             Bare e-postene i miljøvariabelen <code>ALLOWED_EMAILS</code> (i Vercel) kan lage konto.

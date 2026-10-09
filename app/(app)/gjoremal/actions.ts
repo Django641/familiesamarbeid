@@ -79,20 +79,24 @@ export async function clearDoneTasks(): Promise<Result & { removed?: Task[] }> {
   return { removed };
 }
 
+const RestoreRow = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  notes: z.string().max(2000).nullable(),
+  assignee_person_id: z.uuid().nullable(),
+  due_date: DateKey.nullable(),
+  done: z.boolean(),
+  done_at: z.coerce.date().nullable(),
+  created_by: z.string().max(100).nullable(),
+  created_at: z.coerce.date(),
+});
+
+/** Angre: legger tilbake rader med samme id-er (validert — kommer fra klienten). */
 export async function restoreTasks(rows: Task[]): Promise<Result> {
   await requireUser();
-  z.array(z.uuid()).max(500).parse(rows.map((r) => r.id));
-  if (rows.length === 0) return {};
-  await db
-    .insert(tasks)
-    .values(
-      rows.map((r) => ({
-        ...r,
-        done_at: r.done_at ? new Date(r.done_at) : null,
-        created_at: new Date(r.created_at),
-        updated_at: new Date(),
-      }))
-    )
-    .onConflictDoNothing();
+  const parsed = z.array(RestoreRow).max(500).safeParse(rows);
+  if (!parsed.success) return { error: "Kunne ikke angre." };
+  if (parsed.data.length === 0) return {};
+  await db.insert(tasks).values(parsed.data).onConflictDoNothing();
   return done();
 }

@@ -2,6 +2,7 @@ import { inArray } from "drizzle-orm";
 
 import { TopBar } from "@/components/top-bar";
 import { allowedEmails } from "@/lib/auth";
+import { inviteCode } from "@/lib/invite";
 import { db } from "@/lib/db";
 import { user as userTable } from "@/lib/db/schema";
 import { getFamily } from "@/lib/session";
@@ -32,8 +33,12 @@ export default async function SettingsPage() {
         <PasskeyCard />
         <PushToggle />
         <AccessCard
-          appUrl={appUrl}
-          pending={emails.filter((e) => !registered.some((r) => r.email.toLowerCase() === e))}
+          invites={emails
+            .filter((e) => !registered.some((r) => r.email.toLowerCase() === e))
+            .map((email) => ({
+              email,
+              url: `${appUrl}/login?${new URLSearchParams({ epost: email, invitasjon: inviteCode(email) })}`,
+            }))}
           partner={partner ? { id: partner.id, name: partner.name } : null}
         />
         <AccountCard email={myEmail} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronDown, Eraser, Plus, Trash2 } from "lucide-react";
 
 import { Avatar } from "@/components/avatar";
@@ -11,6 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { UndoToast } from "@/components/ui/undo-toast";
 import type { Person, Task } from "@/lib/types";
+import { useServerState } from "@/lib/use-server-state";
 import { addDays, cn, dayLabel, osloDateKey } from "@/lib/utils";
 
 import { addTask, clearDoneTasks, deleteTask, restoreTasks, setTaskDone, updateTask } from "./actions";
@@ -48,7 +49,7 @@ function groupTasks(open: Task[], todayKey: string): Group[] {
 }
 
 export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person[]; me: Person }) {
-  const [local, setLocal] = useState(tasks);
+  const [local, setLocal, track] = useServerState(tasks);
   const [filter, setFilter] = useState<Filter>("alle");
   const [editing, setEditing] = useState<Task | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -56,7 +57,6 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
   const [error, setError] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => setLocal(tasks), [tasks]);
   useEffect(
     () => () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -72,7 +72,7 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
   const doneList = visible
     .filter((t) => t.done)
     .sort((a, b) => +new Date(b.done_at ?? 0) - +new Date(a.done_at ?? 0));
-  const groups = useMemo(() => groupTasks(open, todayKey), [open, todayKey]);
+  const groups = groupTasks(open, todayKey);
   const personById = new Map(people.map((p) => [p.id, p]));
 
   function showToast(message: string, undo: () => void) {
@@ -95,7 +95,7 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
       });
     }
     try {
-      await setTaskDone(task.id, isDone);
+      await track(setTaskDone(task.id, isDone));
     } catch {
       patchLocal(task.id, { done: task.done, done_at: task.done_at });
       setError("Klarte ikke å lagre. Sjekk nettet og prøv igjen.");
@@ -108,10 +108,10 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
     showToast(`«${task.title}» er slettet`, async () => {
       setToast(null);
       setLocal((prev) => [...prev, task]);
-      await restoreTasks([task]).catch(() => setError("Klarte ikke å angre."));
+      await track(restoreTasks([task])).catch(() => setError("Klarte ikke å angre."));
     });
     try {
-      await deleteTask(task.id);
+      await track(deleteTask(task.id));
     } catch {
       setLocal((prev) => [...prev, task]);
       setError("Klarte ikke å slette. Prøv igjen.");
@@ -122,12 +122,12 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
     const removed = local.filter((t) => t.done);
     setLocal((prev) => prev.filter((t) => !t.done));
     try {
-      const res = await clearDoneTasks();
+      const res = await track(clearDoneTasks());
       const rows = res.removed ?? removed;
       showToast(rows.length === 1 ? "1 gjøremål ryddet bort" : `${rows.length} gjøremål ryddet bort`, async () => {
         setToast(null);
         setLocal((prev) => [...prev, ...rows]);
-        await restoreTasks(rows).catch(() => setError("Klarte ikke å angre."));
+        await track(restoreTasks(rows)).catch(() => setError("Klarte ikke å angre."));
       });
     } catch {
       setLocal((prev) => [...prev, ...removed]);
@@ -235,8 +235,16 @@ export function TaskBoard({ tasks, people, me }: { tasks: Task[]; people: Person
         todayKey={todayKey}
         onClose={() => setEditing(null)}
         onDelete={remove}
-        onSaved={(t) => patchLocal(t.id, t)}
-        onError={setError}
+        onSave={async (task, input) => {
+          patchLocal(task.id, input);
+          try {
+            const res = await track(updateTask(task.id, input));
+            if (res.error) throw new Error(res.error);
+          } catch (e) {
+            patchLocal(task.id, task);
+            setError(e instanceof Error && e.message ? e.message : "Klarte ikke å lagre endringen.");
+          }
+        }}
       />
 
       <UndoToast message={toast?.message ?? null} onUndo={() => toast?.undo()} />
@@ -469,6 +477,8 @@ function DuePicker({ todayKey, value, onChange }: { todayKey: string; value: str
   );
 }
 
+type TaskInput = { title: string; notes: string | null; assignee_person_id: string | null; due_date: string | null };
+
 function EditSheet({
   task,
   people,
@@ -476,8 +486,7 @@ function EditSheet({
   todayKey,
   onClose,
   onDelete,
-  onSaved,
-  onError,
+  onSave,
 }: {
   task: Task | null;
   people: Person[];
@@ -485,68 +494,59 @@ function EditSheet({
   todayKey: string;
   onClose: () => void;
   onDelete: (t: Task) => void;
-  onSaved: (t: Task) => void;
-  onError: (e: string | null) => void;
+  onSave: (t: Task, input: TaskInput) => void;
 }) {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [assignee, setAssignee] = useState<string | null>(null);
   const [due, setDue] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!task) return;
+  const [lastId, setLastId] = useState<string | null>(null);
+  // Fyll skjemaet når et nytt gjøremål åpnes (under render, så gamle verdier aldri vises).
+  if (!task && lastId !== null) setLastId(null);
+  if (task && task.id !== lastId) {
+    setLastId(task.id);
     setTitle(task.title);
     setNotes(task.notes ?? "");
     setAssignee(task.assignee_person_id);
     setDue(task.due_date);
-  }, [task]);
-
-  if (!task) return <Sheet open={false} onClose={onClose} title="Gjøremål">{null}</Sheet>;
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!task || !title.trim()) return;
-    setBusy(true);
-    const input = { title: title.trim(), notes: notes.trim() || null, assignee_person_id: assignee, due_date: due };
-    onSaved({ ...task, ...input });
-    onClose();
-    try {
-      const res = await updateTask(task.id, input);
-      if (res.error) onError(res.error);
-    } catch {
-      onSaved(task);
-      onError("Klarte ikke å lagre endringen.");
-    } finally {
-      setBusy(false);
-    }
   }
 
   return (
-    <Sheet open onClose={onClose} title="Gjøremål">
-      <form onSubmit={save} className="flex flex-col gap-4">
-        <Input aria-label="Tittel" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Textarea
-          aria-label="Notat"
-          placeholder="Notat (valgfritt)"
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Hvem</span>
-          <AssigneePicker people={people} me={me} value={assignee} onChange={setAssignee} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Frist</span>
-          <DuePicker todayKey={todayKey} value={due} onChange={setDue} />
-        </div>
-        <Button type="submit" size="lg" disabled={busy || !title.trim()}>
-          Lagre
-        </Button>
-        <Button type="button" variant="ghost" className="text-[var(--color-danger)]" onClick={() => onDelete(task)}>
-          <Trash2 className="h-4 w-4" aria-hidden /> Slett gjøremålet
-        </Button>
-      </form>
+    <Sheet open={task !== null} onClose={onClose} title="Gjøremål">
+      {task ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!title.trim()) return;
+            onSave(task, { title: title.trim(), notes: notes.trim() || null, assignee_person_id: assignee, due_date: due });
+            onClose();
+          }}
+          className="flex flex-col gap-4"
+        >
+          <Input aria-label="Tittel" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Textarea
+            aria-label="Notat"
+            placeholder="Notat (valgfritt)"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Hvem</span>
+            <AssigneePicker people={people} me={me} value={assignee} onChange={setAssignee} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Frist</span>
+            <DuePicker todayKey={todayKey} value={due} onChange={setDue} />
+          </div>
+          <Button type="submit" size="lg" disabled={!title.trim()}>
+            Lagre
+          </Button>
+          <Button type="button" variant="ghost" className="text-[var(--color-danger)]" onClick={() => onDelete(task)}>
+            <Trash2 className="h-4 w-4" aria-hidden /> Slett gjøremålet
+          </Button>
+        </form>
+      ) : null}
     </Sheet>
   );
 }

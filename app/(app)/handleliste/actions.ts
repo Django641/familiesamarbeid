@@ -77,26 +77,24 @@ export async function clearBought(): Promise<Result & { removed?: ShoppingItem[]
   return { removed };
 }
 
-/** Angre: legger tilbake rader med samme id-er og felter. */
+const RestoreRow = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(120),
+  category: z.enum(["dagligvare", "annet"]),
+  store: z.string().max(60).nullable(),
+  status: z.enum(["ma_kjopes", "kjopt"]),
+  sort_order: z.number().nullable(),
+  created_by: z.string().max(100).nullable(),
+  created_at: z.coerce.date(),
+});
+
+/** Angre: legger tilbake rader med samme id-er og felter (validert — kommer fra klienten). */
 export async function restoreShoppingItems(items: ShoppingItem[]): Promise<Result> {
   await requireUser();
-  const ids = z.array(z.uuid()).max(500).parse(items.map((i) => i.id));
-  if (ids.length === 0) return {};
-  await db
-    .insert(shopping_items)
-    .values(
-      items.map((i) => ({
-        id: i.id,
-        name: i.name,
-        category: i.category,
-        store: i.store,
-        status: i.status,
-        sort_order: i.sort_order,
-        created_by: i.created_by,
-        created_at: new Date(i.created_at),
-      }))
-    )
-    .onConflictDoNothing();
+  const parsed = z.array(RestoreRow).max(500).safeParse(items);
+  if (!parsed.success) return { error: "Kunne ikke angre." };
+  if (parsed.data.length === 0) return {};
+  await db.insert(shopping_items).values(parsed.data).onConflictDoNothing();
   return done();
 }
 

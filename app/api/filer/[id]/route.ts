@@ -9,6 +9,17 @@ import { getSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
+const INLINE_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "text/plain",
+]);
+
 // Viser en privat fil. Tilgang sjekkes her (ikke bare i proxy), og svaret caches
 // aldri i CDN — bare privat i nettleseren, med ETag for raske 304-svar.
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -33,11 +44,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (etag) headers.set("ETag", etag);
   if (result.statusCode === 304) return new NextResponse(null, { status: 304, headers });
 
-  const download = new URL(request.url).searchParams.has("last-ned");
-  headers.set("Content-Type", result.blob.contentType || doc.content_type || "application/octet-stream");
+  // Bare typer som ikke kan kjøre script vises i nettleseren. Alt annet (HTML, SVG,
+  // ukjent) lastes ned som binærfil — ellers kunne en opplastet fil kjøre kode på vårt domene.
+  const type = (result.blob.contentType || doc.content_type || "").split(";")[0].trim().toLowerCase();
+  const inlineSafe = INLINE_TYPES.has(type);
+  const download = !inlineSafe || new URL(request.url).searchParams.has("last-ned");
+  headers.set("Content-Type", inlineSafe ? type : "application/octet-stream");
   headers.set(
     "Content-Disposition",
     `${download ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(doc.name)}`
   );
+  if (type !== "application/pdf") headers.set("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'");
   return new NextResponse(result.stream, { headers });
 }

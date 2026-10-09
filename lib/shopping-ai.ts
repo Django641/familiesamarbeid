@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { isAiConfigured, structuredCall } from "@/lib/anthropic";
@@ -81,6 +81,9 @@ export async function sortGroceries(): Promise<{ error?: string }> {
   });
 
   await db.transaction(async (tx) => {
+    // Lås synk-telleren FØRST (samme rekkefølge som trigger-oppdateringer fra andre
+    // endringer), så vi ikke får deadlock med den andre telefonen.
+    await tx.execute(sql`select 1 from sync_state where id = 1 for update`);
     for (const [i, id] of orderedIds.entries()) {
       await tx.update(shopping_items).set({ sort_order: i + 1 }).where(eq(shopping_items.id, id));
     }

@@ -9,6 +9,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
 import { UndoToast } from "@/components/ui/undo-toast";
 import type { ShoppingItem, ShoppingStatus } from "@/lib/types";
+import { useServerState } from "@/lib/use-server-state";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,14 +26,13 @@ import {
 const NEXT_STATUS: Record<ShoppingStatus, ShoppingStatus> = { ma_kjopes: "kjopt", kjopt: "ma_kjopes" };
 
 export function ShoppingList({ items }: { items: ShoppingItem[] }) {
-  const [local, setLocal] = useState<ShoppingItem[]>(items);
+  const [local, setLocal, track] = useServerState(items);
   const [sorting, setSorting] = useState(false);
   const [editing, setEditing] = useState<ShoppingItem | null>(null);
   const [toast, setToast] = useState<{ message: string; undo: () => void } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => setLocal(items), [items]);
   useEffect(
     () => () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -60,7 +60,7 @@ export function ShoppingList({ items }: { items: ShoppingItem[] }) {
     const next = NEXT_STATUS[item.status];
     patch(item.id, { status: next });
     try {
-      await setShoppingStatus(item.id, next);
+      await track(setShoppingStatus(item.id, next));
     } catch {
       patch(item.id, { status: item.status });
       setError("Klarte ikke å lagre. Sjekk nettet.");
@@ -73,10 +73,10 @@ export function ShoppingList({ items }: { items: ShoppingItem[] }) {
     showToast(`«${item.name}» er fjernet`, async () => {
       setToast(null);
       setLocal((prev) => [...prev, item]);
-      await restoreShoppingItems([item]).catch(() => setError("Klarte ikke å angre."));
+      await track(restoreShoppingItems([item])).catch(() => setError("Klarte ikke å angre."));
     });
     try {
-      await deleteShoppingItem(item.id);
+      await track(deleteShoppingItem(item.id));
     } catch {
       setLocal((prev) => [...prev, item]);
       setError("Klarte ikke å fjerne varen.");
@@ -87,12 +87,12 @@ export function ShoppingList({ items }: { items: ShoppingItem[] }) {
     const removed = bought;
     setLocal((prev) => prev.filter((i) => i.status === "ma_kjopes"));
     try {
-      const res = await clearBought();
+      const res = await track(clearBought());
       const rows = res.removed ?? removed;
       showToast(rows.length === 1 ? "1 vare ryddet bort" : `${rows.length} varer ryddet bort`, async () => {
         setToast(null);
         setLocal((prev) => [...prev, ...rows]);
-        await restoreShoppingItems(rows).catch(() => setError("Klarte ikke å angre."));
+        await track(restoreShoppingItems(rows)).catch(() => setError("Klarte ikke å angre."));
       });
     } catch {
       setLocal((prev) => [...prev, ...removed]);
@@ -190,7 +190,7 @@ export function ShoppingList({ items }: { items: ShoppingItem[] }) {
           setEditing(null);
           patch(item.id, changes);
           try {
-            const res = await updateShoppingItem(item.id, { ...changes, store: changes.store ?? "" });
+            const res = await track(updateShoppingItem(item.id, { ...changes, store: changes.store ?? "" }));
             if (res.error) throw new Error(res.error);
           } catch {
             patch(item.id, { name: item.name, category: item.category, store: item.store });
@@ -283,6 +283,7 @@ function EditSheet({
   const [category, setCategory] = useState<ShoppingItem["category"]>("dagligvare");
   const [store, setStore] = useState("");
   const [lastId, setLastId] = useState<string | null>(null);
+  if (!item && lastId !== null) setLastId(null); // neste åpning leser ferske verdier
   if (item && item.id !== lastId) {
     setLastId(item.id);
     setName(item.name);

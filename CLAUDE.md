@@ -58,8 +58,8 @@ npm run db:migrate   # kjør migrasjoner (skjer også automatisk i Vercel-builde
 
 1. Aldri commit hemmeligheter. `.env.local` er gitignored; `.env.example` dokumenterer navnene.
 2. Appen er lukket: `proxy.ts` sender alle uten sesjons-cookie til `/login` (unntatt `/login` og `/api/auth/*`). Den ekte sjekken er `requireUser()` / `getSession()` i **hver** side, Server Action og API-rute.
-3. Bare e-poster i `ALLOWED_EMAILS` kan lage konto (`databaseHooks` i `lib/auth.ts`).
-4. Filer i Blob er private og åpnes bare via `/api/filer/[id]` (sjekker innlogging, `Cache-Control: private`).
+3. Bare e-poster i `ALLOWED_EMAILS` kan lage konto (`databaseHooks` i `lib/auth.ts`). Etter første konto kreves i tillegg invitasjonskode (`lib/invite.ts`, HMAC av e-posten) — lenken lages under Innstillinger → Tilgang.
+4. Filer i Blob er private og åpnes bare via `/api/filer/[id]` (sjekker innlogging, `Cache-Control: private`). Bare trygge typer (PDF, bilder, tekst) vises inline; alt annet lastes ned, med CSP-sandbox.
 5. `lib/db`, `lib/auth.ts`, `lib/push.ts` har `import "server-only"` — aldri importer dem i klientkode.
 6. AI-resultat som endrer innhold (f.eks. «Fra tekst») vises alltid for redigering før lagring. Unntak: sortering av handlelista (endrer bare rekkefølge).
 
