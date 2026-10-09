@@ -2,6 +2,8 @@
 
 Privat PWA for et samboerpar i Oslo med to døtre (Ada 9, Lea 6). Felles kalender, handleliste, gjøremål, beskjeder og dokumenter som synkes live mellom to telefoner. **Ikke et kommersielt produkt** — to brukere, ingen markedsføring, ingen skalering. Målet: raskere og enklere enn SMS, Notes og å lete i Spond.
 
+@AGENTS.md
+
 **Les `docs/STATUS.md` først i hver økt.** Den sier hva som er gjort, hva som venter på eieren, hva som er droppet og hva som står i backloggen.
 
 ## Roller og agenter
