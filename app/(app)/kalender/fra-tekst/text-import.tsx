@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Check, ClipboardPaste, Loader2, Sparkles } from "lucide-react";
+import { Check, ClipboardPaste, ImagePlus, Loader2, Sparkles } from "lucide-react";
 
 import { PersonPicker } from "@/components/person-picker";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EVENT_CATEGORIES } from "@/lib/config";
 import { type EventDraft, type EventRowDraft, draftToRow } from "@/lib/event-draft";
+import { prepareUpload } from "@/lib/prepare-upload";
 import type { Person } from "@/lib/types";
 
 import { createEvents } from "../actions";
@@ -77,6 +78,8 @@ export function TextImport({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [canPaste, setCanPaste] = useState(false);
+  const [reading, setReading] = useState<"tekst" | "fil">("tekst");
+  const fileInput = useRef<HTMLInputElement>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -95,18 +98,26 @@ export function TextImport({
     }
   }
 
-  async function analyse() {
+  async function run(init: RequestInit, kind: "tekst" | "fil") {
     setBusy(true);
+    setReading(kind);
     setError(null);
+    setSaved(null);
     try {
-      const res = await fetch("/api/ai/parse-events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = (await res.json()) as { events?: AiEvent[]; error?: string };
-      if (!res.ok || !data.events) throw new Error(data.error ?? "Noe gikk galt");
-      if (data.events.length === 0) setError("Fant ingen hendelser med dato i teksten.");
+      const res = await fetch("/api/ai/parse-events", { method: "POST", ...init });
+      const data = (await res.json().catch(() => ({}))) as { events?: AiEvent[]; error?: string };
+      if (!res.ok || !data.events) {
+        const fallback =
+          res.status === 413
+            ? "Fila er for stor."
+            : res.status === 504
+              ? "Det tok for lang tid. Prøv et skjermbilde av siden med datoene."
+              : "Noe gikk galt";
+        throw new Error(data.error ?? fallback);
+      }
+      if (data.events.length === 0) {
+        setError(kind === "fil" ? "Fant ingen hendelser med dato i fila." : "Fant ingen hendelser med dato i teksten.");
+      }
       setRows(data.events.map((e, i) => toRow(e, people, i)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Noe gikk galt");
@@ -114,6 +125,55 @@ export function TextImport({
       setBusy(false);
     }
   }
+
+  function analyse() {
+    return run({ headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }, "tekst");
+  }
+
+  /** Bilde/PDF → AI. Det som står i tekstfeltet sendes med som kommentar («gjelder Lea»). */
+  async function analyseFile(file: File | undefined) {
+    if (fileInput.current) fileInput.current.value = ""; // samme fil kan velges igjen
+    if (!file || busy) return;
+    setBusy(true); // konvertering av store bilder kan ta et par sekunder på telefonen
+    setReading("fil");
+    setError(null);
+    let upload: File;
+    try {
+      upload = await prepareUpload(file);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Klarte ikke å lese fila.");
+      setBusy(false);
+      return;
+    }
+    const form = new FormData();
+    form.append("fil", upload);
+    if (text.trim()) form.append("tekst", text.trim().slice(0, 2000));
+    await run({ body: form }, "fil");
+  }
+
+  const fileButton = (
+    <>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={(e) => analyseFile(e.target.files?.[0])}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size={inline ? "icon" : "default"}
+        className={inline ? "h-12 w-12 shrink-0" : undefined}
+        onClick={() => fileInput.current?.click()}
+        disabled={busy}
+        aria-label={inline ? "Les fra bilde eller PDF" : undefined}
+      >
+        <ImagePlus className="h-5 w-5" aria-hidden />
+        {inline ? null : "Les fra bilde eller PDF"}
+      </Button>
+    </>
+  );
 
   function update(key: string, changes: Partial<Row>) {
     setRows((prev) => prev?.map((r) => (r.key === key ? { ...r, ...changes } : r)) ?? null);
@@ -249,13 +309,14 @@ export function TextImport({
               setText(e.target.value);
               setSaved(null);
             }}
-            placeholder="Skriv eller lim inn en avtale …"
+            placeholder="Skriv eller lim inn …"
           />
           {canPaste ? (
             <Button type="button" variant="outline" size="icon" className="h-12 w-12 shrink-0" onClick={paste} disabled={busy} aria-label="Lim inn fra utklippstavla">
               <ClipboardPaste className="h-5 w-5" aria-hidden />
             </Button>
           ) : null}
+          {fileButton}
         </div>
         {error ? (
           <p role="alert" className="text-sm text-[var(--color-danger)]">
@@ -275,7 +336,7 @@ export function TextImport({
           </Link>
           <Button type="button" size="sm" onClick={analyse} disabled={busy || text.trim().length < 3}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
-            {busy ? "Leser …" : "Legg inn"}
+            {busy ? (reading === "fil" ? "Leser fila …" : "Leser …") : "Legg inn"}
           </Button>
         </div>
       </div>
@@ -301,8 +362,9 @@ export function TextImport({
       ) : null}
       <Button size="lg" onClick={analyse} disabled={busy || text.trim().length < 3}>
         {busy ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Sparkles className="h-5 w-5" aria-hidden />}
-        {busy ? "Leser teksten …" : "Finn hendelser"}
+        {busy ? (reading === "fil" ? "Leser fila …" : "Leser teksten …") : "Finn hendelser"}
       </Button>
+      {fileButton}
     </div>
   );
 }

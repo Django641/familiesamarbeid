@@ -11,3 +11,5 @@
 - CSS grid med dynamisk `repeat(${n}, …)` i inline style: `repeat(0, …)` er ugyldig CSS -> hele grid-template forkastes. Sjekk n=0-tilfellet.
 - `?fra=`-datoer validert bare med regex (`\d{4}-\d{2}-\d{2}`): `2026-13-45` gir Invalid Date -> `toISOString()` kaster RangeError -> 500. Krev rundtur-validering (addDays(k,0) === k).
 - Oslo-datofunksjoner (`osloDateKey` = toLocaleDateString uten cachet formatter) kalt i nøstede løkker (uker x hendelser) blir tregt på mobil. Forhåndsberegn per hendelse.
+- fetch mot egne API-ruter: Vercel svarer 413/504 med ikke-JSON -> `res.json()` kaster -> generisk «Noe gikk galt». Sjekk at status (spesielt 504 ved maxDuration) mappes til forståelig melding.
+- Asynkront forarbeid (bildekonvertering o.l.) FØR `setBusy(true)` -> knapper er aktive i mellomtiden -> to parallelle kall, siste svar vinner.

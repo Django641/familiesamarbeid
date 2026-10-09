@@ -17,6 +17,7 @@ Se `docs/OPPSETT.md`.
 - [ ] Push-varsler på begge iPhoner
 - [ ] Opplasting av store bilder/PDF-er til Blob fra iPhone
 - [ ] «Fra tekst»/hurtigfeltet på ekte meldinger fra Skolemelding/Spond og korte notiser («konsert i morgen kl. 20»)
+- [ ] Bilde/PDF → hendelser på ekte iPhone (HEIC-bilder fra kamera/bilder, PDF fra Filer)
 - [ ] Uker-visningen på ekte iPhone (lesbarhet av stolper/emoji, trykk på dag)
 
 ## ✅ Gjort
@@ -25,6 +26,7 @@ Se `docs/OPPSETT.md`.
 - [x] Vercel-prosjekt, Blob-lagring og miljøvariabler satt opp av Claude
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
 - [x] **Kalender pakke 1** (etter agentdrøfting, se `docs/KALENDER.md`): «Uker»-visning med mange uker under hverandre (ukenummer, reiser/ferier som stolper, aktiviteter som emoji, dagsark ved trykk), bryter Uker/Liste i toppfeltet (huskes per telefon), hurtigfelt «Skriv eller lim inn en avtale» øverst i Kalender med AI-forslag som bekreftes før lagring, «＋» per dag i Liste
+- [x] **Bilde/PDF → kalender:** bildeknapp i hurtigfeltet og på «Fra tekst» — ta bilde av et skriv, velg skjermbilde eller PDF; bildet skaleres ned i nettleseren (maks 2000 px JPEG, også HEIC), PDF maks 4 MB; Claude leser og foreslår hendelser som bekreftes før lagring. Ingenting lagres av fila. AI-feil vises som norske meldinger.
 - [x] **«Fra tekst»:** lim inn melding → AI foreslår hendelser → rediger → lagre. Kan også startes fra en beskjed.
 - [x] **Handleliste:** alle funksjonene fra Hyttekompis (dagligvare/annet, butikkgruppering, AI-sortering, auto-innsortering, rydd med angre) med nytt utseende — trykk på vare for å redigere, angre ved sletting
 - [x] **Gjøremål:** gruppert etter frist (Forfalt/I dag/I morgen/Denne uka/Senere), raske «hvem/når»-valg, rediger i bunnark, angre, «Mine og felles»

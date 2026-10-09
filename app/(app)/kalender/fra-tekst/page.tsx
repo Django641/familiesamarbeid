@@ -12,8 +12,8 @@ export default async function FromTextPage({ searchParams }: { searchParams: Pro
       <TopBar title="Fra tekst" />
       <main className="mx-auto max-w-xl px-4 py-4">
         <p className="mb-3 text-sm text-[var(--color-muted)]">
-          Lim inn en melding fra Spond, Skolemelding, e-post eller SMS. AI-en foreslår hendelser — du sjekker og
-          retter før noe lagres.
+          Lim inn en melding fra Spond, Skolemelding, e-post eller SMS — eller velg et bilde eller en PDF. AI-en
+          foreslår hendelser — du sjekker og retter før noe lagres.
         </p>
         <TextImport people={people} initialText={tekst?.slice(0, 8000) ?? ""} />
       </main>

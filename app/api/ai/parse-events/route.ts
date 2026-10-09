@@ -1,7 +1,8 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isAiConfigured, structuredCall } from "@/lib/anthropic";
+import { type AiAttachment, isAiConfigured, structuredCall, userContent } from "@/lib/anthropic";
 import { EVENT_CATEGORIES } from "@/lib/config";
 import { db } from "@/lib/db";
 import { people as peopleTable } from "@/lib/db/schema";
@@ -12,10 +13,47 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // «Lim inn tekst → hendelser»: tolker en melding (Spond, Skolemelding, e-post,
-// SMS) til kalenderutkast. Resultatet LAGRES IKKE — klienten viser utkastene
-// for redigering, og brukeren velger hva som lagres.
+// SMS), et bilde (skjermbilde, foto av et skriv) eller en PDF til kalenderutkast.
+// Resultatet LAGRES IKKE — klienten viser utkastene for redigering, og brukeren
+// velger hva som lagres.
+//
+// Tekst sendes som JSON { text }. Fil sendes som multipart: «fil» + valgfri «tekst».
+// Bilder skaleres ned i nettleseren før opplasting (Vercel tar maks 4,5 MB per kall).
 
 const RequestSchema = z.object({ text: z.string().trim().min(3).max(8000) });
+const NoteSchema = z.string().trim().max(2000);
+
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+type ImageType = (typeof IMAGE_TYPES)[number];
+
+/** Leser forespørselen: tekst, eller fil (+ ev. tekst). Returnerer feilmelding som streng. */
+async function readInput(request: Request): Promise<{ text: string; attachments: AiAttachment[] } | string> {
+  const type = request.headers.get("content-type") ?? "";
+  if (!type.startsWith("multipart/form-data")) {
+    const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
+    return parsed.success ? { text: parsed.data.text, attachments: [] } : "Lim inn litt tekst først.";
+  }
+
+  const form = await request.formData().catch(() => null);
+  const file = form?.get("fil");
+  if (!(file instanceof File) || file.size === 0) return "Fant ingen fil.";
+  if (file.size > MAX_FILE_BYTES) return "Fila er for stor (maks 4 MB). Prøv et skjermbilde i stedet.";
+  const note = NoteSchema.safeParse(form?.get("tekst") ?? "");
+  const data = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+  let attachment: AiAttachment;
+  if (file.type === "application/pdf") attachment = { kind: "pdf", data };
+  else if ((IMAGE_TYPES as readonly string[]).includes(file.type)) {
+    attachment = { kind: "image", mediaType: file.type as ImageType, data };
+  } else return "Bare bilder (JPEG, PNG, WebP) og PDF kan leses.";
+
+  const extra = note.success && note.data ? `\n\nKommentar fra den som lastet opp: ${note.data}` : "";
+  return {
+    text: `Hent ut hendelsene fra ${attachment.kind === "pdf" ? "dokumentet" : "bildet"} over.${extra}`,
+    attachments: [attachment],
+  };
+}
 
 const DraftSchema = z.object({
   title: z.string(),
@@ -85,8 +123,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsedBody = RequestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsedBody.success) return NextResponse.json({ error: "Lim inn litt tekst først." }, { status: 400 });
+  const input = await readInput(request);
+  if (typeof input === "string") return NextResponse.json({ error: input }, { status: 400 });
 
   const people = await db
     .select({ name: peopleTable.name, kind: peopleTable.kind, user_id: peopleTable.user_id })
@@ -102,7 +140,7 @@ export async function POST(request: Request) {
 I dag er ${weekday} ${today} (Europe/Oslo). Relative datoer («på tirsdag», «neste uke», «14.10.») tolkes ut fra dette, alltid fremover i tid.
 Familien: ${family}.${writer ? `\nDen som skriver er ${writer}: «jeg», «meg» og «min» betyr ${writer}.` : ""}
 
-Teksten kan være en lang melding med flere datoer, eller en kort notis skrevet av en av de voksne («konsert i morgen kl. 20», «Lea tannlege tir 14:30», «jobbreise Bergen 3.–5. nov»). En kort notis blir én hendelse.
+Du kan få et bilde (skjermbilde fra Spond/Skolemelding/e-post, foto av et skriv eller en invitasjon) eller en PDF i stedet for tekst — les da innholdet og bruk samme regler. Teksten kan være en lang melding med flere datoer, eller en kort notis skrevet av en av de voksne («konsert i morgen kl. 20», «Lea tannlege tir 14:30», «jobbreise Bergen 3.–5. nov»). En kort notis blir én hendelse.
 
 Regler:
 - Ta bare med hendelser som har en dato. Ikke finn på noe.
@@ -113,14 +151,27 @@ Regler:
 - Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.`;
 
   try {
-    const raw = await structuredCall({ system, user: parsedBody.data.text, schema: OUTPUT_SCHEMA });
+    const raw = await structuredCall({
+      system,
+      user: userContent(input.text, input.attachments),
+      schema: OUTPUT_SCHEMA,
+    });
     const parsed = AiResponseSchema.safeParse(raw);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Klarte ikke å tolke teksten. Prøv igjen." }, { status: 502 });
+      return NextResponse.json({ error: "Klarte ikke å tolke innholdet. Prøv igjen." }, { status: 502 });
     }
     return NextResponse.json({ events: parsed.data.events.slice(0, 30) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Ukjent feil";
-    return NextResponse.json({ error: `AI-feil: ${message}` }, { status: 502 });
+    // Detaljene logges på serveren; brukeren får en forståelig norsk melding.
+    console.error("parse-events: AI-kallet feilet", error);
+    let message = "AI-tjenesten svarte ikke. Prøv igjen om litt.";
+    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+      message = "AI-nøkkelen virker ikke. Sjekk ANTHROPIC_API_KEY i Vercel.";
+    } else if (error instanceof Anthropic.RateLimitError) {
+      message = "AI-tjenesten er travel akkurat nå. Prøv igjen om et minutt.";
+    } else if (error instanceof Anthropic.BadRequestError) {
+      message = "AI-en klarte ikke å lese dette. Prøv et tydeligere bilde eller lim inn teksten.";
+    }
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }
