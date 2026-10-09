@@ -1,6 +1,6 @@
 # Kalenderen — plan etter agentdrøfting (9. oktober 2026)
 
-Eieren ba teamet tenke ut hva som gjør kalenderen (appens viktigste verktøy) virkelig nyttig, og nevnte «mange uker under hverandre». Drøftingen gikk i to runder mellom `ux-designer`, `produktutvikler`, `brukerstemme` og `frontend`, og prosjektlederen samlet den. **Ingenting er bygget ennå. Pakke 1 venter på eierens ja.**
+Eieren ba teamet tenke ut hva som gjør kalenderen (appens viktigste verktøy) virkelig nyttig, og nevnte «mange uker under hverandre». Drøftingen gikk i to runder mellom `ux-designer`, `produktutvikler`, `brukerstemme` og `frontend`, og prosjektlederen samlet den. **Pakke 1 er bygget (9. okt), justert etter eierens svar — se under.**
 
 ## Det alle var enige om
 
@@ -39,7 +39,18 @@ Eieren ba teamet tenke ut hva som gjør kalenderen (appens viktigste verktøy) v
 
 ## Pakker (prosjektlederens anbefaling)
 
-### Pakke 1 — oversikten (ca. 1–2 dager, én liten migrasjon)
+### Eierens svar (9. okt)
+1. Alt må med: fritidsaktiviteter (glemmes lett), jobbreiser (begge må se dem) og egne avtaler som konsert.
+2. Alt legges inn manuelt foreløpig → rask innlegging er avgjørende.
+3. «Hvem kjører?» ikke nå.
+4. Ønske: lime inn en beskjed (f.eks. fra skolen) og la Claude legge den i kalenderen. Løst som hurtigfelt øverst i Kalender (ikke i Beskjeder, som er for meldinger mellom de voksne).
+
+### Pakke 1 — bygget
+- Hurtigfelt «Skriv eller lim inn en avtale …» øverst i Kalender: korte notiser og lange beskjeder → AI-forslag som kan rettes → Lagre. Lim inn-knapp. «Fyll ut selv» åpner skjemaet.
+- Uker (standard) og Liste med bryter i toppfeltet, dagsark, «＋» per dag i Liste, «Vis flere uker» / «Tidligere uker».
+- Ikke med: «Hvem kjører?» (eieren: ikke nå), klebrig ukedagsrad.
+
+### Opprinnelig forslag til Pakke 1 (ca. 1–2 dager, én liten migrasjon)
 1. **Uker-visning** med:
    - ukenummer og klebrig månedsnavn
    - stolper for flerdags- og heldagshendelser

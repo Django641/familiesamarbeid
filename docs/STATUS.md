@@ -6,23 +6,25 @@ Prosjektets statusfil. Prosjektlederen holder den oppdatert. Les den først i hv
 
 Se `docs/OPPSETT.md`.
 
-- [ ] Koble Neon til Vercel-prosjektet (ett klikk) og redeploy
-- [ ] Legg samboerens e-post i `ALLOWED_EMAILS` (din er lagt inn)
-- [ ] Legg inn `ANTHROPIC_API_KEY` (valgfritt — AI-sortering og «Fra tekst»)
-- [ ] Begge lager konto, legger appen på Hjem-skjermen og slår på Face ID og varsler
+- [x] Neon koblet til (prefiks `DATABASE`), migrasjoner kjørt i produksjon 9. okt
+- [x] `ALLOWED_EMAILS` = Kjetil + Miriam
+- [x] `ANTHROPIC_API_KEY` lagt inn (Production, workspace-nøkkel)
+- [ ] Begge lager konto (Miriam via invitasjonslenke fra Innstillinger → Tilgang), legger appen på Hjem-skjermen og slår på Face ID og varsler
 
 ## 🔎 Venter på verifisering i praksis
 
 - [ ] Face ID (passkeys) i appen fra Hjem-skjermen på iPhone
 - [ ] Push-varsler på begge iPhoner
 - [ ] Opplasting av store bilder/PDF-er til Blob fra iPhone
-- [ ] «Fra tekst» på ekte meldinger fra Skolemelding/Spond
+- [ ] «Fra tekst»/hurtigfeltet på ekte meldinger fra Skolemelding/Spond og korte notiser («konsert i morgen kl. 20»)
+- [ ] Uker-visningen på ekte iPhone (lesbarhet av stolper/emoji, trykk på dag)
 
 ## ✅ Gjort
 
 - [x] **Stack byttet til Vercel-integrerte tjenester** (eierens ønske): Neon Postgres + Drizzle, Better Auth (e-post/passord + Face ID, kun `ALLOWED_EMAILS`), Vercel Blob (privat), live-synk via databasetriggere + 5-sekunders spørring. Supabase er fjernet.
 - [x] Vercel-prosjekt, Blob-lagring og miljøvariabler satt opp av Claude
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
+- [x] **Kalender pakke 1** (etter agentdrøfting, se `docs/KALENDER.md`): «Uker»-visning med mange uker under hverandre (ukenummer, reiser/ferier som stolper, aktiviteter som emoji, dagsark ved trykk), bryter Uker/Liste i toppfeltet (huskes per telefon), hurtigfelt «Skriv eller lim inn en avtale» øverst i Kalender med AI-forslag som bekreftes før lagring, «＋» per dag i Liste
 - [x] **«Fra tekst»:** lim inn melding → AI foreslår hendelser → rediger → lagre. Kan også startes fra en beskjed.
 - [x] **Handleliste:** alle funksjonene fra Hyttekompis (dagligvare/annet, butikkgruppering, AI-sortering, auto-innsortering, rydd med angre) med nytt utseende — trykk på vare for å redigere, angre ved sletting
 - [x] **Gjøremål:** gruppert etter frist (Forfalt/I dag/I morgen/Denne uka/Senere), raske «hvem/når»-valg, rediger i bunnark, angre, «Mine og felles»
@@ -37,6 +39,7 @@ Se `docs/OPPSETT.md`.
 
 ## 🧭 Beslutninger
 
+- **Kalender (eieren 9. okt):** alt må med — jobbreiser, fritidsaktiviteter og egne avtaler (f.eks. konsert). Alt legges inn manuelt foreløpig, så rask innlegging er viktigst. «Hvem kjører?» (ansvarlig voksen) er ikke ønsket nå. Innlegging fra fritekst skjer i Kalender, ikke i Beskjeder.
 - **Database:** Neon via Vercel Marketplace (eierens valg), Drizzle ORM. Migrasjoner kjøres automatisk i builden — ingen manuell SQL.
 - **Innlogging:** Better Auth i egen database (gratis, passkeys/Face ID). Vurdert: Neon Auth (beta, ingen passkeys) og Clerk (betalt for passkeys/allowlist).
 - **Live-synk:** spørring hvert 5. s mens appen er synlig, mot en teller som databasetriggere øker. Enkelt, ingen ekstra tjeneste, og databasen sover når appen er lukket. Oppgraderingsvei hvis det trengs: Upstash Realtime.
@@ -64,8 +67,7 @@ Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 
 ### P1
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
-- [ ] **Kalenderen: Pakke 1** (Uker-visning, dagsark, bryter Uker/Liste, «Hvem kjører?») — plan i `docs/KALENDER.md`, venter på eierens ja
-- [ ] Kalenderen: Pakke 2 og 3 — se `docs/KALENDER.md`
+- [ ] Kalenderen: Pakke 2 (som sist, dato-chips, rediger serie, angre, ny/endret) og 3 (borte-chip, kontinuerlig rulling) — se `docs/KALENDER.md`
 - [ ] Angre ved sletting av hendelse
 - [ ] Varsel kvelden før/morgenen samme dag for hendelser (push via cron)
 

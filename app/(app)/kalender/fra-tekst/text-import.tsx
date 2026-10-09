@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ClipboardPaste, Loader2, Sparkles } from "lucide-react";
 
 import { PersonPicker } from "@/components/person-picker";
 import { Button } from "@/components/ui/button";
@@ -54,12 +55,45 @@ function toRow(e: AiEvent, people: Person[], i: number): Row {
   };
 }
 
-export function TextImport({ people, initialText = "" }: { people: Person[]; initialText?: string }) {
+/**
+ * Skriv eller lim inn tekst → AI foreslår hendelser → brukeren retter og lagrer.
+ * `inline` er hurtigfeltet øverst i Kalender; `page` er egen side (brukes fra Beskjeder).
+ * AI-forslag lagres aldri uten at de er vist og bekreftet.
+ */
+export function TextImport({
+  people,
+  initialText = "",
+  variant = "page",
+}: {
+  people: Person[];
+  initialText?: string;
+  variant?: "page" | "inline";
+}) {
   const router = useRouter();
+  const inline = variant === "inline";
   const [text, setText] = useState(initialText);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [canPaste, setCanPaste] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setCanPaste(typeof navigator !== "undefined" && typeof navigator.clipboard?.readText === "function");
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    };
+  }, []);
+
+  async function paste() {
+    try {
+      const clip = (await navigator.clipboard.readText()).trim();
+      if (clip) setText((prev) => (prev.trim() ? `${prev.trim()}\n${clip}` : clip).slice(0, 8000));
+    } catch {
+      setError("Fikk ikke lest utklippstavla. Hold fingeren i feltet og velg «Lim inn».");
+    }
+  }
 
   async function analyse() {
     setBusy(true);
@@ -109,7 +143,17 @@ export function TextImport({ people, initialText = "" }: { people: Person[]; ini
       setBusy(false);
       return;
     }
-    router.push("/kalender");
+    if (!inline) {
+      router.push("/kalender");
+      return;
+    }
+    setBusy(false);
+    setRows(null);
+    setText("");
+    setSaved(chosen.length === 1 ? `«${chosen[0].title}» er lagt i kalenderen` : `${chosen.length} hendelser er lagt i kalenderen`);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(null), 5000);
+    router.refresh();
   }
 
   if (rows && rows.length > 0) {
@@ -119,15 +163,17 @@ export function TextImport({ people, initialText = "" }: { people: Person[]; ini
         {rows.map((r) => (
           <Card key={r.key} className={r.selected ? "" : "opacity-60"}>
             <CardContent className="flex flex-col gap-3 p-3">
-              <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-[var(--color-primary)]"
-                  checked={r.selected}
-                  onChange={(e) => update(r.key, { selected: e.target.checked })}
-                />
-                Ta med
-              </label>
+              {rows.length > 1 ? (
+                <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-[var(--color-primary)]"
+                    checked={r.selected}
+                    onChange={(e) => update(r.key, { selected: e.target.checked })}
+                  />
+                  Ta med
+                </label>
+              ) : null}
               <Input aria-label="Tittel" value={r.title} onChange={(e) => update(r.key, { title: e.target.value })} />
               <div className="grid grid-cols-2 gap-2">
                 <Input
@@ -179,8 +225,59 @@ export function TextImport({ people, initialText = "" }: { people: Person[]; ini
           {busy ? "Lagrer …" : `Lagre ${count} i kalenderen`}
         </Button>
         <Button variant="outline" onClick={() => setRows(null)} disabled={busy}>
-          Start på nytt
+          {inline ? "Tilbake til teksten" : "Start på nytt"}
         </Button>
+      </div>
+    );
+  }
+
+  if (inline) {
+    const long = text.length > 40 || text.includes("\n");
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start gap-2">
+          <Label htmlFor="hurtig" className="sr-only">
+            Ny hendelse: skriv eller lim inn tekst
+          </Label>
+          <Textarea
+            id="hurtig"
+            rows={long ? 5 : 1}
+            className="min-h-12 flex-1 resize-none py-2.5"
+            value={text}
+            maxLength={8000}
+            onChange={(e) => {
+              setText(e.target.value);
+              setSaved(null);
+            }}
+            placeholder="Skriv eller lim inn en avtale …"
+          />
+          {canPaste ? (
+            <Button type="button" variant="outline" size="icon" className="h-12 w-12 shrink-0" onClick={paste} disabled={busy} aria-label="Lim inn fra utklippstavla">
+              <ClipboardPaste className="h-5 w-5" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
+        {error ? (
+          <p role="alert" className="text-sm text-[var(--color-danger)]">
+            {error}
+          </p>
+        ) : null}
+        <p role="status" className={saved ? "flex items-center gap-1.5 text-sm text-[var(--color-success)]" : "sr-only"}>
+          {saved ? (
+            <>
+              <Check className="h-4 w-4" aria-hidden /> {saved}
+            </>
+          ) : null}
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/kalender/ny" className="flex min-h-11 items-center px-1 text-sm text-[var(--color-primary)] underline">
+            Fyll ut selv
+          </Link>
+          <Button type="button" size="sm" onClick={analyse} disabled={busy || text.trim().length < 3}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
+            {busy ? "Leser …" : "Legg inn"}
+          </Button>
+        </div>
       </div>
     );
   }

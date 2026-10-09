@@ -75,7 +75,8 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 export async function POST(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Ikke autentisert" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Ikke autentisert" }, { status: 401 });
 
   if (!isAiConfigured()) {
     return NextResponse.json(
@@ -87,8 +88,11 @@ export async function POST(request: Request) {
   const parsedBody = RequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsedBody.success) return NextResponse.json({ error: "Lim inn litt tekst først." }, { status: 400 });
 
-  const people = await db.select({ name: peopleTable.name, kind: peopleTable.kind }).from(peopleTable);
+  const people = await db
+    .select({ name: peopleTable.name, kind: peopleTable.kind, user_id: peopleTable.user_id })
+    .from(peopleTable);
   const family = people.map((p) => `${p.name} (${p.kind})`).join(", ") || "ukjent";
+  const writer = people.find((p) => p.user_id === session.user.id)?.name;
 
   const today = osloDateKey(new Date());
   const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString("nb-NO", { weekday: "long", timeZone: "UTC" });
@@ -96,14 +100,17 @@ export async function POST(request: Request) {
   const system = `Du hjelper en norsk familie med å legge hendelser i en delt kalender. Du får en tekst (melding fra Spond, Skolemelding, e-post, SMS e.l.) og skal hente ut alle konkrete hendelser med dato.
 
 I dag er ${weekday} ${today} (Europe/Oslo). Relative datoer («på tirsdag», «neste uke», «14.10.») tolkes ut fra dette, alltid fremover i tid.
-Familien: ${family}.
+Familien: ${family}.${writer ? `\nDen som skriver er ${writer}: «jeg», «meg» og «min» betyr ${writer}.` : ""}
+
+Teksten kan være en lang melding med flere datoer, eller en kort notis skrevet av en av de voksne («konsert i morgen kl. 20», «Lea tannlege tir 14:30», «jobbreise Bergen 3.–5. nov»). En kort notis blir én hendelse.
 
 Regler:
 - Ta bare med hendelser som har en dato. Ikke finn på noe.
 - Kategorier: avtale, reise, jobb, skole (skole/barnehage/SFO/foreldremøter), aktivitet (fotball, trening, kamper, cuper), bursdag, annet.
 - «people»: bruk bare navn fra familielista. Gjelder det et barn (f.eks. klassen eller laget hennes), velg barnet.
 - Frister («svar innen», «betal innen») blir egne heldagshendelser med tittel som starter med «Frist:».
-- Tittelen skal være kort og forståelig uten resten av meldingen.`;
+- Tittelen skal være kort og forståelig uten resten av meldingen.
+- Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.`;
 
   try {
     const raw = await structuredCall({ system, user: parsedBody.data.text, schema: OUTPUT_SCHEMA });
