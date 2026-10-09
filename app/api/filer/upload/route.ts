@@ -14,11 +14,19 @@ const MAX_BYTES = 50 * 1024 * 1024;
 export async function POST(request: Request) {
   if (!(await getSession())) return NextResponse.json({ error: "Ikke innlogget" }, { status: 401 });
 
-  const body = (await request.json()) as HandleUploadPresignedBody;
+  const body = (await request.json().catch(() => null)) as HandleUploadPresignedBody | null;
+  // Vi bruker bare «gi meg en opplastings-URL». Fullført-varsler fra Blob (webhook)
+  // brukes ikke — klienten registrerer fila selv med `registerDocument` — så de avvises.
+  if (body?.type !== "blob.generate-presigned-url") {
+    return NextResponse.json({ error: "Ugyldig forespørsel" }, { status: 400 });
+  }
   try {
     const result = await handleUploadPresigned({
       body,
       request,
+      // Biblioteket krever en nøkkel for å verifisere webhook-signaturer, selv om den
+      // bare brukes for «upload-completed», som vi avviser over. Uten den feiler alt.
+      webhookPublicKey: process.env.BLOB_WEBHOOK_PUBLIC_KEY || "brukes-ikke",
       getSignedToken: async (pathname) => {
         if (!/^dokumenter\/[0-9a-f-]{36}-[A-Za-z0-9._-]{1,120}$/.test(pathname)) {
           throw new Error("Ugyldig filsti");
@@ -34,6 +42,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Opplasting feilet" }, { status: 400 });
+    console.error("filer/upload: kunne ikke lage opplastings-URL", error);
+    return NextResponse.json({ error: "Kunne ikke starte opplastingen. Prøv igjen." }, { status: 400 });
   }
 }

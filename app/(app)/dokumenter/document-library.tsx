@@ -103,7 +103,10 @@ export function DocumentLibrary({ documents, people }: { documents: DocumentRow[
           if (res.error) throw new Error(res.error);
           setUploads((prev) => prev.filter((u) => u.key !== key));
         } catch (e) {
-          const message = e instanceof Error && e.message ? e.message : "Opplasting feilet.";
+          // Feil fra Blob-biblioteket er på engelsk («Vercel Blob: …») — vis en norsk melding.
+          const raw = e instanceof Error ? e.message : "";
+          const message = raw && !raw.startsWith("Vercel Blob") ? raw : "Opplastingen feilet. Prøv igjen.";
+          if (raw.startsWith("Vercel Blob")) console.error(raw);
           setUploads((prev) => prev.map((u) => (u.key === key ? { ...u, error: message } : u)));
         }
       })
