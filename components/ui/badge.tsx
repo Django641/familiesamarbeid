@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 type Variant = "default" | "muted" | "warning" | "success" | "danger";
 
 const variantClass: Record<Variant, string> = {
-  default: "bg-[var(--color-primary)] text-white",
+  default: "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]",
   muted: "bg-[var(--color-bg)] text-[var(--color-muted)] border border-[var(--color-border)]",
   warning: "bg-amber-100 text-amber-900 border border-amber-200",
   success: "bg-green-100 text-green-900 border border-green-200",

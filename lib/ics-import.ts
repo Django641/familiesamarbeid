@@ -32,9 +32,38 @@ type ImportedRow = ParsedEvent & {
   person_ids: string[];
 };
 
-/** webcal:// → https:// (Google/iCloud gir ofte webcal-lenker). */
-export function normalizeIcsUrl(url: string): string {
-  return url.trim().replace(/^webcal:\/\//i, "https://");
+const MAX_BYTES = 5 * 1024 * 1024;
+
+/** webcal:// → https:// (Google/iCloud gir ofte webcal-lenker). Bare https godtas. */
+export function normalizeIcsUrl(raw: string): URL {
+  const url = new URL(raw.trim().replace(/^webcal:\/\//i, "https://"));
+  if (url.protocol !== "https:") throw new Error("Lenken må starte med https:// eller webcal://");
+  const host = url.hostname;
+  if (host === "localhost" || /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|0\.)/.test(host) || host.includes(":")) {
+    throw new Error("Lenken peker til en intern adresse");
+  }
+  return url;
+}
+
+/** Leser svaret med tak på størrelse, så en feil lenke ikke kan fylle minnet. */
+async function readLimited(res: Response): Promise<string> {
+  const length = Number(res.headers.get("content-length") ?? 0);
+  if (length > MAX_BYTES) throw new Error("Kalenderfila er for stor");
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BYTES) {
+      await reader.cancel();
+      throw new Error("Kalenderfila er for stor");
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 function toParsed(
@@ -73,7 +102,11 @@ function dateToIso(t: ICAL.Time): string {
   return osloToIso(`${t.year}-${String(t.month).padStart(2, "0")}-${String(t.day).padStart(2, "0")}`);
 }
 
-export function parseIcs(text: string, cal: ExternalCalendar, now = new Date()): ImportedRow[] {
+export function parseIcs(
+  text: string,
+  cal: ExternalCalendar,
+  now = new Date()
+): { rows: ImportedRow[]; truncated: boolean } {
   const root = new ICAL.Component(ICAL.parse(text));
   for (const tz of root.getAllSubcomponents("vtimezone")) {
     ICAL.TimezoneService.register(tz);
@@ -128,7 +161,7 @@ export function parseIcs(text: string, cal: ExternalCalendar, now = new Date()):
       );
     }
   }
-  return parsed.map((r) => ({
+  const rows = parsed.map((r) => ({
     ...r,
     source: "ics" as const,
     household_id: cal.household_id,
@@ -136,22 +169,39 @@ export function parseIcs(text: string, cal: ExternalCalendar, now = new Date()):
     category: cal.category,
     person_ids: cal.person_ids,
   }));
+  return { rows, truncated: parsed.length >= MAX_OCCURRENCES };
+}
+
+/** Henter med manuell redirect-håndtering, så hver ny adresse også sjekkes. */
+async function fetchIcs(rawUrl: string): Promise<Response> {
+  let url = normalizeIcsUrl(rawUrl);
+  for (let hop = 0; hop < 4; hop++) {
+    const res = await fetch(url, {
+      redirect: "manual",
+      headers: { "User-Agent": "Familiesamarbeid/1.0 (privat familiekalender)" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      url = normalizeIcsUrl(new URL(location, url).toString());
+      continue;
+    }
+    return res;
+  }
+  throw new Error("For mange videresendinger");
 }
 
 /** Synker én kalender: henter, parser, upserter og sletter forsvunne hendelser. */
 export async function syncCalendar(cal: ExternalCalendar): Promise<{ ok: boolean; count: number; error?: string }> {
   const admin = createAdminClient();
   try {
-    const res = await fetch(normalizeIcsUrl(cal.url), {
-      headers: { "User-Agent": "Familiesamarbeid/1.0 (privat familiekalender)" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    });
+    const res = await fetchIcs(cal.url);
     if (!res.ok) throw new Error(`Kalenderen svarte ${res.status}`);
-    const text = await res.text();
+    const text = await readLimited(res);
     if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Lenken ga ikke en iCal-fil");
 
-    const rows = parseIcs(text, cal);
+    const { rows, truncated } = parseIcs(text, cal);
     // Dedup på UID (enkelte kilder gjentar samme forekomst).
     const unique = Array.from(new Map(rows.map((r) => [r.external_uid, r])).values());
 
@@ -163,14 +213,23 @@ export async function syncCalendar(cal: ExternalCalendar): Promise<{ ok: boolean
     }
 
     // Fjern importerte hendelser som ikke lenger finnes i kilden (innenfor vinduet).
-    const windowStartIso = new Date(Date.now() - PAST_DAYS * 86_400_000).toISOString();
-    const { data: existing } = await admin
-      .from("events")
-      .select("id, external_uid")
-      .eq("external_calendar_id", cal.id)
-      .gte("starts_at", windowStartIso);
-    const keep = new Set(unique.map((r) => r.external_uid));
-    const stale = (existing ?? []).filter((e) => !keep.has(e.external_uid as string)).map((e) => e.id);
+    // Hopper over når parsingen ble avkortet — da vet vi ikke hva som mangler.
+    const stale: string[] = [];
+    if (!truncated) {
+      const windowStartIso = new Date(Date.now() - PAST_DAYS * 86_400_000).toISOString();
+      const keep = new Set(unique.map((r) => r.external_uid));
+      for (let from = 0; ; from += 1000) {
+        const { data: page } = await admin
+          .from("events")
+          .select("id, external_uid")
+          .eq("external_calendar_id", cal.id)
+          .gte("starts_at", windowStartIso)
+          .order("id")
+          .range(from, from + 999);
+        for (const e of page ?? []) if (!keep.has(e.external_uid as string)) stale.push(e.id);
+        if (!page || page.length < 1000) break;
+      }
+    }
     for (let i = 0; i < stale.length; i += 200) {
       await admin.from("events").delete().in("id", stale.slice(i, i + 200));
     }

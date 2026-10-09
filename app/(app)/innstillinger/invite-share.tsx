@@ -33,7 +33,9 @@ export function InviteShare({ code, appUrl, compact }: { code: string; appUrl: s
         ) : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <p className="text-center font-mono text-2xl font-bold tracking-widest">{code}</p>
+        <p className="text-center font-mono text-xl font-bold tracking-wider">
+          {code.match(/.{1,4}/g)?.join("-") ?? code}
+        </p>
         <Button type="button" variant={compact ? "outline" : "default"} onClick={share}>
           {copied ? <Copy className="h-4 w-4" aria-hidden /> : <Share2 className="h-4 w-4" aria-hidden />}
           {copied ? "Lenke kopiert" : "Del invitasjonslenke"}

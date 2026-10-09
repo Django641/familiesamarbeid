@@ -122,7 +122,7 @@ create table if not exists public.external_calendars (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households(id) on delete cascade,
   name text not null,
-  url text not null,
+  url text not null check (url ~* '^(https|webcal)://'),
   category text not null default 'aktivitet',
   person_ids uuid[] not null default '{}',
   last_synced_at timestamptz,
@@ -296,13 +296,18 @@ declare
   v_code text;
   v_child text;
   v_pos int := 1;
-  v_colors text[] := array['#db2777', '#d97706', '#7c3aed', '#0891b2'];
+  v_colors text[] := array['#db2777', '#b45309', '#7c3aed', '#0e7490'];
 begin
   if auth.uid() is null then
     raise exception 'Not authenticated';
   end if;
 
-  v_code := upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+  if exists (select 1 from public.household_members where user_id = auth.uid()) then
+    raise exception 'Du er allerede med i en familie';
+  end if;
+
+  -- 12 tegn (48 bit) — umulig å gjette, også med anon-tilgang til household_invite_info.
+  v_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12));
 
   insert into public.households (name, invite_code, created_by)
   values (p_name, v_code, auth.uid())
@@ -339,7 +344,7 @@ as $$
   select h.id, h.name, coalesce(p.display_name, 'Noen')
   from public.households h
   left join public.profiles p on p.id = h.created_by
-  where upper(h.invite_code) = upper(p_code);
+  where h.invite_code = upper(regexp_replace(p_code, '[^A-Za-z0-9]', '', 'g'));
 $$;
 
 grant execute on function public.household_invite_info(text) to anon, authenticated;
@@ -357,9 +362,27 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select id into v_household_id from public.households where upper(invite_code) = upper(p_code);
+  select id into v_household_id
+  from public.households
+  where invite_code = upper(regexp_replace(p_code, '[^A-Za-z0-9]', '', 'g'));
   if v_household_id is null then
     raise exception 'Ugyldig invitasjonskode';
+  end if;
+
+  if exists (
+    select 1 from public.household_members
+    where user_id = auth.uid() and household_id <> v_household_id
+  ) then
+    raise exception 'Du er allerede med i en annen familie';
+  end if;
+
+  -- Appen er for to voksne. En lekket kode gir ikke tilgang når familien er full.
+  if (select count(*) from public.household_members where household_id = v_household_id) >= 2
+     and not exists (
+       select 1 from public.household_members
+       where household_id = v_household_id and user_id = auth.uid()
+     ) then
+    raise exception 'Familien er full';
   end if;
 
   insert into public.household_members (household_id, user_id, role)
@@ -369,12 +392,23 @@ begin
   update public.profiles set display_name = p_display_name where id = auth.uid();
 
   insert into public.people (household_id, name, kind, color, user_id, position)
-  values (v_household_id, p_display_name, 'voksen', '#16a34a', auth.uid(), 1)
+  values (v_household_id, p_display_name, 'voksen', '#15803d', auth.uid(), 1)
   on conflict (household_id, user_id) do nothing;
 
   return v_household_id;
 end;
 $$;
+
+-- =====================================================================
+-- Rettigheter for Data API (RLS under avgjør hvilke rader som er synlige).
+-- Nyere Supabase-prosjekter gir ikke alltid disse automatisk.
+-- =====================================================================
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+revoke execute on function public.create_household_with_owner(text, text, text[]) from public, anon;
+revoke execute on function public.join_household_by_code(text, text) from public, anon;
+grant execute on function public.create_household_with_owner(text, text, text[]) to authenticated;
+grant execute on function public.join_household_by_code(text, text) to authenticated;
 
 -- =====================================================================
 -- RLS

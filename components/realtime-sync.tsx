@@ -34,11 +34,16 @@ export function RealtimeSync({ householdId }: { householdId: string }) {
 
     const channel = supabase.channel(`household-${householdId}`);
     for (const table of TABLES) {
-      channel.on(
-        "postgres_changes" as never,
-        { event: "*", schema: "public", table, filter: `household_id=eq.${householdId}` },
-        refresh
-      );
+      for (const event of ["INSERT", "UPDATE"]) {
+        channel.on(
+          "postgres_changes" as never,
+          { event, schema: "public", table, filter: `household_id=eq.${householdId}` },
+          refresh
+        );
+      }
+      // DELETE kan ikke filtreres (med RLS inneholder old-record bare primærnøkkelen).
+      // RLS sørger for at vi bare får varsel om rader vi har tilgang til.
+      channel.on("postgres_changes" as never, { event: "DELETE", schema: "public", table }, refresh);
     }
     channel.subscribe();
 

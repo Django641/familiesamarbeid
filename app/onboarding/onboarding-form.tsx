@@ -45,8 +45,15 @@ export function OnboardingForm({ defaultName, defaultCode }: { defaultName: stri
           });
     setBusy(false);
     if (rpcError) {
+      const msg = rpcError.message;
       setError(
-        rpcError.message.includes("Ugyldig") ? "Fant ingen familie med den koden." : "Noe gikk galt. Prøv igjen."
+        msg.includes("Ugyldig")
+          ? "Fant ingen familie med den koden."
+          : msg.includes("full")
+            ? "Familien har allerede to voksne."
+            : msg.includes("allerede")
+              ? "Du er allerede med i en familie."
+              : "Noe gikk galt. Prøv igjen."
       );
       return;
     }
@@ -124,7 +131,7 @@ export function OnboardingForm({ defaultName, defaultCode }: { defaultName: stri
             autoComplete="off"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="6 tegn"
+            placeholder="XXXX-XXXX-XXXX"
           />
         </div>
       )}

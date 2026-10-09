@@ -8,6 +8,11 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
+function randomToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * Personlig, hemmelig abonnementslenke (ICS) som legger familiekalenderen inn i
  * Outlook (jobb), Google Kalender og iPhone-kalenderen. Endringer kommer automatisk,
@@ -38,8 +43,10 @@ export function CalendarFeed({
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    if (rotate) await supabase.from("calendar_feeds").delete().eq("user_id", userId);
-    const { error: dbError } = await supabase.from("calendar_feeds").insert({ household_id: householdId, user_id: userId });
+    // Ved ny lenke byttes tokenet på samme rad, så man aldri står helt uten lenke.
+    const { error: dbError } = rotate
+      ? await supabase.from("calendar_feeds").update({ token: randomToken() }).eq("user_id", userId)
+      : await supabase.from("calendar_feeds").insert({ household_id: householdId, user_id: userId });
     setBusy(false);
     if (dbError) setError("Klarte ikke å lage lenke. Prøv igjen.");
     router.refresh();

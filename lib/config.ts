@@ -35,13 +35,14 @@ export const DOCUMENT_CATEGORIES = [
   { value: "annet", label: "Annet" },
 ] as const;
 
+/** Farger for personer. Alle gir lesbar hvit tekst (kontrast ≥ 4.5:1 for initialer). */
 export const PERSON_COLORS = [
-  "#2563eb",
-  "#16a34a",
-  "#db2777",
-  "#d97706",
-  "#7c3aed",
-  "#0891b2",
-  "#dc2626",
-  "#4b5563",
+  { value: "#2563eb", name: "Blå" },
+  { value: "#15803d", name: "Grønn" },
+  { value: "#db2777", name: "Rosa" },
+  { value: "#b45309", name: "Oransje" },
+  { value: "#7c3aed", name: "Lilla" },
+  { value: "#0e7490", name: "Turkis" },
+  { value: "#dc2626", name: "Rød" },
+  { value: "#4b5563", name: "Grå" },
 ] as const;

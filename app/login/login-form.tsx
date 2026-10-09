@@ -6,6 +6,7 @@ import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +27,7 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const next =
-    params.next && params.next.startsWith("/") && !params.next.startsWith("//") ? params.next : "/hjem";
+  const next = safeNext(params.next);
 
   // Bruk kanonisk app-URL fra env hvis satt, ellers gjeldende origin
   function appOrigin(): string {

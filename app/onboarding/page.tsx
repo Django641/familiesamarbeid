@@ -19,7 +19,13 @@ export default async function OnboardingPage({
   if (!user) redirect("/login");
 
   const [{ data: membership }, { data: profile }, { code }] = await Promise.all([
-    supabase.from("household_members").select("household_id").eq("user_id", user.id).limit(1).maybeSingle(),
+    supabase
+      .from("household_members")
+      .select("household_id")
+      .eq("user_id", user.id)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle(),
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
     searchParams,
   ]);

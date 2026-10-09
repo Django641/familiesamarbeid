@@ -12,7 +12,7 @@ const variantClass: Record<Variant, string> = {
     "bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-bg)]",
   outline: "border border-[var(--color-border)] bg-transparent hover:bg-[var(--color-surface)]",
   ghost: "bg-transparent hover:bg-[var(--color-surface)]",
-  destructive: "bg-[var(--color-danger)] text-white hover:opacity-90",
+  destructive: "bg-[var(--color-danger)] text-[var(--color-primary-foreground)] hover:opacity-90",
 };
 
 const sizeClass: Record<Size, string> = {

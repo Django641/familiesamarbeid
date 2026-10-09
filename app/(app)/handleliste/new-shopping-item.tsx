@@ -18,14 +18,16 @@ export function NewShoppingItem({ householdId }: { householdId: string }) {
   const [category, setCategory] = useState<Category>("dagligvare");
   const [store, setStore] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
     setSaving(true);
+    setError(null);
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { data, error: dbError } = await supabase
       .from("shopping_items")
       .insert({
         household_id: householdId,
@@ -36,12 +38,13 @@ export function NewShoppingItem({ householdId }: { householdId: string }) {
       .select("id")
       .single();
     setSaving(false);
-    if (!error) {
-      notifyHousehold(`la til «${trimmed}» på handlelista`, "/handleliste", "shopping");
-      if (category === "dagligvare" && data) {
-        placeShoppingItem(data.id);
-      }
+    if (dbError) {
+      // Behold teksten så ingenting forsvinner stille (f.eks. uten nett).
+      setError("Klarte ikke å legge til. Prøv igjen.");
+      return;
     }
+    notifyHousehold(`la til «${trimmed}» på handlelista`, "/handleliste", "shopping");
+    if (category === "dagligvare" && data) placeShoppingItem(data.id);
     setName("");
     setStore("");
     router.refresh();
@@ -85,6 +88,11 @@ export function NewShoppingItem({ householdId }: { householdId: string }) {
       <Button type="submit" disabled={saving || !name.trim()}>
         Legg til
       </Button>
+      {error ? (
+        <p role="alert" className="text-sm text-[var(--color-danger)]">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

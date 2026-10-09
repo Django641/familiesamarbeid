@@ -13,7 +13,7 @@ export const maxDuration = 15;
 
 const RequestSchema = z.object({
   message: z.string().min(1).max(200),
-  url: z.string().min(1).max(200).startsWith("/"),
+  url: z.string().min(1).max(200).regex(/^\/(?![/\\])/, "Kun interne lenker"),
   tag: z.string().max(50).optional(),
 });
 
@@ -35,7 +35,13 @@ export async function POST(request: Request) {
   const { message, url, tag } = parsed.data;
 
   const [{ data: membership }, { data: profile }] = await Promise.all([
-    supabase.from("household_members").select("household_id").eq("user_id", user.id).limit(1).maybeSingle(),
+    supabase
+      .from("household_members")
+      .select("household_id")
+      .eq("user_id", user.id)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle(),
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
   ]);
   if (!membership) return NextResponse.json({ error: "Ingen husstand" }, { status: 403 });

@@ -36,6 +36,8 @@ Se `docs/OPPSETT.md` for steg-for-steg.
 - [x] **Hjem:** vær Helsfyr + Hedalen, festede beskjeder, frister, neste sju dager
 - [x] Live-synk (Supabase Realtime), web push, PWA, mørk modus
 - [x] Claude Code-oppsett: agenter med modellvalg, skills, regler, hooks
+- [x] Første `kvalitetskontroll`-runde: invitasjonskode 12 tegn + maks to voksne, trygg `next`-redirect, live-synk av slettinger, ICS-escaping, https-krav og størrelsesgrense på kalenderimport, trykkflater og kontrast i mørk modus
+- [x] Migrasjon 0001 testet i PGlite (Postgres 17): kjører to ganger uten feil, RLS isolerer familier (også Storage), anon kan ikke bli med
 
 ## 🧭 Beslutninger
 
@@ -57,6 +59,7 @@ Se `docs/OPPSETT.md` for steg-for-steg.
 Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 
 ### P1
+- [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
 - [ ] Ukevisning (7 kolonner) som alternativ til agenda
 - [ ] Rediger ett gjøremål (tittel/frist/ansvarlig) i lista
 - [ ] Angre ved sletting av enkeltvare/hendelse

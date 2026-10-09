@@ -29,7 +29,7 @@ export function FamilyEditor({ householdId, people }: { householdId: string; peo
     const name = newName.trim();
     if (!name) return;
     const used = new Set(people.map((p) => p.color));
-    const color = PERSON_COLORS.find((c) => !used.has(c)) ?? PERSON_COLORS[people.length % PERSON_COLORS.length];
+    const color = (PERSON_COLORS.find((c) => !used.has(c.value)) ?? PERSON_COLORS[people.length % PERSON_COLORS.length]).value;
     const { error: dbError } = await createClient()
       .from("people")
       .insert({ household_id: householdId, name, kind: "barn", color, position: 10 + people.length });
@@ -72,17 +72,17 @@ export function FamilyEditor({ householdId, people }: { householdId: string; peo
               <div role="radiogroup" aria-label={`Farge for ${p.name}`} className="flex flex-wrap gap-1">
                 {PERSON_COLORS.map((c) => (
                   <button
-                    key={c}
+                    key={c.value}
                     type="button"
                     role="radio"
-                    aria-checked={p.color === c}
-                    aria-label={c}
-                    onClick={() => update(p.id, { color: c })}
+                    aria-checked={p.color === c.value}
+                    aria-label={c.name}
+                    onClick={() => update(p.id, { color: c.value })}
                     className={cn(
-                      "h-9 w-9 rounded-full border-2",
-                      p.color === c ? "border-[var(--color-text)]" : "border-transparent"
+                      "h-11 w-11 rounded-full border-4",
+                      p.color === c.value ? "border-[var(--color-text)]" : "border-transparent"
                     )}
-                    style={{ backgroundColor: c }}
+                    style={{ backgroundColor: c.value }}
                   />
                 ))}
               </div>

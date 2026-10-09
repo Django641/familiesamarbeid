@@ -12,6 +12,16 @@ import type { DocumentRow } from "@/lib/types";
 import { cn, formatBytes, formatDateTime } from "@/lib/utils";
 
 const BUCKET = "family-files";
+
+/** Storage-nøkler tåler ikke alltid æøå o.l. — gjør om til ASCII (originalnavnet lagres i tabellen). */
+function storageSafeName(name: string): string {
+  return name
+    .replace(/æ/g, "ae").replace(/Æ/g, "Ae").replace(/ø/g, "o").replace(/Ø/g, "O").replace(/å/g, "a").replace(/Å/g, "A")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .slice(-120);
+}
 const MAX_BYTES = 25 * 1024 * 1024;
 
 /**
@@ -41,7 +51,7 @@ export function DocumentList({ householdId, documents }: { householdId: string; 
         setError(`«${file.name}» er større enn 25 MB.`);
         continue;
       }
-      const safeName = file.name.replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(-120);
+      const safeName = storageSafeName(file.name);
       const path = `${householdId}/${crypto.randomUUID()}-${safeName}`;
       const { error: upError } = await supabase.storage
         .from(BUCKET)
@@ -173,7 +183,7 @@ export function DocumentList({ householdId, documents }: { householdId: string; 
                     type="button"
                     onClick={() => remove(d)}
                     aria-label={`Slett ${d.name}`}
-                    className="flex h-11 w-9 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
+                    className="flex h-11 w-11 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </button>

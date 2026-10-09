@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { overlapFilter } from "@/lib/events";
 import { buildIcs } from "@/lib/ics";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CalendarEvent, Person } from "@/lib/types";
@@ -33,8 +34,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       .from("events")
       .select("*")
       .eq("household_id", feed.household_id)
-      .gte("starts_at", from)
       .lt("starts_at", to)
+      .or(overlapFilter(from)) // tar med lange hendelser som startet før vinduet
       .order("starts_at")
       .limit(3000),
     admin.from("people").select("*").eq("household_id", feed.household_id),

@@ -242,7 +242,7 @@ function TaskRow({
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2",
               task.done
-                ? "border-[var(--color-success)] bg-[var(--color-success)] text-white"
+                ? "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-primary-foreground)]"
                 : "border-[var(--color-border)] hover:border-[var(--color-primary)]"
             )}
           >
@@ -263,7 +263,7 @@ function TaskRow({
             type="button"
             onClick={() => onRemove(task)}
             aria-label={`Slett «${task.title}»`}
-            className="flex h-11 w-9 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
+            className="flex h-11 w-11 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
           </button>

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const rawNext = url.searchParams.get("next") ?? "/hjem";
-  // Bare relative stier — hindrer åpen redirect til andre domener.
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/hjem";
+  // Bare relative stier i appen — hindrer åpen redirect til andre domener.
+  const next = safeNext(url.searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();

@@ -98,7 +98,7 @@ export function MessageFeed({
                 type="button"
                 onClick={() => togglePin(m)}
                 aria-label="Løsne beskjed"
-                className="flex h-8 w-8 items-center justify-center"
+                className="flex h-11 w-11 items-center justify-center"
               >
                 <PinOff className="h-4 w-4" aria-hidden />
               </button>
@@ -138,7 +138,7 @@ export function MessageFeed({
                     type="button"
                     onClick={() => togglePin(m)}
                     aria-label={m.important ? "Løsne beskjed" : "Fest beskjed"}
-                    className="flex h-8 w-8 items-center justify-center"
+                    className="flex h-11 w-11 items-center justify-center"
                   >
                     {m.important ? <PinOff className="h-3.5 w-3.5" aria-hidden /> : <Pin className="h-3.5 w-3.5" aria-hidden />}
                   </button>
@@ -147,7 +147,7 @@ export function MessageFeed({
                       type="button"
                       onClick={() => remove(m)}
                       aria-label="Slett beskjed"
-                      className="flex h-8 w-8 items-center justify-center"
+                      className="flex h-11 w-11 items-center justify-center"
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     </button>

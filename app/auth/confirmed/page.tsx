@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 import { buttonClass } from "@/components/ui/button";
+import { safeNext } from "@/lib/safe-next";
 
 export const metadata = { title: "Bekreftet" };
 
@@ -11,7 +12,7 @@ export default async function ConfirmedPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const continueTo = next && next.startsWith("/") && !next.startsWith("//") ? next : "/hjem";
+  const continueTo = safeNext(next);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-5 py-10 text-center">

@@ -6,7 +6,7 @@ import type { CalendarEvent, Person } from "@/lib/types";
 import { addDays, osloDateKey } from "@/lib/utils";
 
 function escapeText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 /** Bretter linjer til maks 75 oktetter (RFC 5545 §3.1). */
@@ -71,7 +71,8 @@ export function buildIcs(opts: { name: string; events: CalendarEvent[]; people: 
     lines.push(`UID:${e.id}@familiesamarbeid`);
     lines.push(`DTSTAMP:${utcStamp(e.updated_at)}`);
     lines.push(`LAST-MODIFIED:${utcStamp(e.updated_at)}`);
-    lines.push(`SEQUENCE:${Math.floor(Date.parse(e.updated_at) / 1000) % 2_000_000_000}`);
+    // Sekunder siden 2024 — øker ved hver endring og holder seg innenfor int32 i mange tiår.
+    lines.push(`SEQUENCE:${Math.max(0, Math.floor((Date.parse(e.updated_at) - Date.UTC(2024, 0, 1)) / 1000))}`);
     if (e.all_day) {
       lines.push(`DTSTART;VALUE=DATE:${dateValue(osloDateKey(e.starts_at))}`);
       lines.push(`DTEND;VALUE=DATE:${dateValue(addDays(eventEndKey(e), 1))}`);

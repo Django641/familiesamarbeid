@@ -429,7 +429,7 @@ function Row({
                 type="button"
                 onClick={saveEdit}
                 disabled={!nameDraft.trim()}
-                className="min-h-11 flex-1 rounded-xl bg-[var(--color-primary)] text-sm font-medium text-white disabled:opacity-50"
+                className="min-h-11 flex-1 rounded-xl bg-[var(--color-primary)] text-sm font-medium text-[var(--color-primary-foreground)] disabled:opacity-50"
               >
                 Lagre
               </button>
@@ -458,7 +458,7 @@ function Row({
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
               item.status === "kjopt"
-                ? "border-[var(--color-success)] bg-[var(--color-success)] text-white"
+                ? "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-primary-foreground)]"
                 : "border-[var(--color-border)] hover:border-[var(--color-primary)]"
             )}
           >
@@ -482,7 +482,7 @@ function Row({
             type="button"
             onClick={openEdit}
             aria-label={`Rediger ${item.name}`}
-            className="flex h-11 w-9 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-primary)]"
+            className="flex h-11 w-11 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-primary)]"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -490,7 +490,7 @@ function Row({
             type="button"
             onClick={remove}
             aria-label={`Slett ${item.name}`}
-            className="flex h-11 w-9 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
+            className="flex h-11 w-11 items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-danger)]"
           >
             <Trash2 className="h-4 w-4" />
           </button>
