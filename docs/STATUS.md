@@ -43,6 +43,7 @@ Se `docs/OPPSETT.md`.
 
 ## 🧭 Beslutninger
 
+- **Retro 9. okt (prosjektleder):** feilene som nådde eieren kom fra manglende testing mot virkeligheten. Tiltak: tester i repoet (`npm test`, `npm run e2e` med lokal PGlite og falske Claude/Blob-tjenester), ny agent `testansvarlig`, skill `/sjekk-produksjon` etter hver push, regel om metadata-logging og «dokumentasjon først» for integrasjoner. Små rettelser gjør prosjektlederen selv. Modellvalgene beholdes. Ingen egen testkonto i produksjon (ville sett alt). Se `docs/AGENTER.md`.
 - **Kalender (eieren 9. okt):** alt må med — jobbreiser, fritidsaktiviteter og egne avtaler (f.eks. konsert). Alt legges inn manuelt foreløpig, så rask innlegging er viktigst. «Hvem kjører?» (ansvarlig voksen) er ikke ønsket nå. Innlegging fra fritekst skjer i Kalender, ikke i Beskjeder.
 - **Database:** Neon via Vercel Marketplace (eierens valg), Drizzle ORM. Migrasjoner kjøres automatisk i builden — ingen manuell SQL.
 - **Innlogging:** Better Auth i egen database (gratis, passkeys/Face ID). Vurdert: Neon Auth (beta, ingen passkeys) og Clerk (betalt for passkeys/allowlist).

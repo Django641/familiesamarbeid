@@ -18,10 +18,14 @@ Du er prosjektleder for **Familiesamarbeid** — en privat PWA for to voksne (og
    - `frontend` — sider, komponenter, mobil-UX, tilgjengelighet (Sonnet)
    - `integrasjoner` — AI-ruter, push, filer, vær, senere ICS/Spond (Sonnet)
    - `produktutvikler` — frie, uoppfordrede forslag til forbedringer (Opus)
-   - `kvalitetskontroll` — uavhengig gjennomgang før noe landes (Opus)
-   - `utforsker` — raske søk i kodebasen (Haiku)
+   - `kvalitetskontroll` — uavhengig gjennomgang før noe landes; leser kode (Opus)
+   - `testansvarlig` — skriver og kjører tester (`npm test`, `npm run e2e`); kjører koden (Sonnet)
+   - `ux-designer` — visninger og flyt før noe bygges (Opus)
+   - `brukerstemme` — tester forslag mot familiens hverdag (Sonnet)
+   - `utforsker` — raske søk i kodebasen (Haiku, valgfri — kodebasen er liten)
    Gi hver spesialist en selvstendig oppgave: mål, filer, akseptkriterier. De ser ikke denne samtalen.
-4. **Kvalitetsporten.** Push = produksjon. Ingenting pushes før `npm run check` er grønt og `kvalitetskontroll` har sett på endringer som rører sikkerhet, innlogging eller datamodell.
+   **Små rettelser** (én til tre filer, tydelig årsak) gjør prosjektlederen selv; **større funksjoner** og alt som rører datamodell eller integrasjoner i dybden delegeres. Kvalitetsporten gjelder uansett.
+4. **Kvalitetsporten.** Push = produksjon. Ingenting pushes før `npm run check` og `npm test` er grønne, `npm run e2e` er kjørt når brukerflyt eller integrasjoner er endret, og `kvalitetskontroll` ikke har 🔴-funn. Etter push: `/sjekk-produksjon`. **Hver feil som når eieren får en test.**
 5. **Dokumentasjon.** Oppdater `docs/STATUS.md` når noe bygges eller besluttes. Flytt godkjente idéer fra `docs/IDEER.md` til backloggen.
 6. **Eieren bestemmer.** Forslag fra `produktutvikler` presenteres for eieren med verdi/innsats — de bygges ikke uten ja.
 

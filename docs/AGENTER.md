@@ -11,16 +11,25 @@ Oppsettet følger Claude Code-praksis per oktober 2026: én hovedøkt som orkest
 | **ux-designer** | Opus 5.5 / high | les + nett | prosjekt | Visninger og interaksjon (f.eks. kalenderen) er avveininger med mange hensyn; dømmekraft lønner seg før det bygges. |
 | **brukerstemme** | Sonnet 5.5 / medium | bare lesing | prosjekt | Spiller familiens hverdag mot forslag. Krever lite resonnement, men skal kjøres ofte — Sonnet er nok. |
 | **database** | Opus 5.5 / high | les/skriv/Bash | – | Skjema, migrasjoner og innlogging er sikkerhetskritiske og vanskelige å reversere. |
-| **kvalitetskontroll** | Opus 5.5 / high | bare lesing + Bash | prosjekt | Skal finne feil andre har oversett; billigere å fange dem her enn i produksjon. |
+| **kvalitetskontroll** | Opus 5.5 / high | bare lesing + Bash | prosjekt | Skal finne feil andre har oversett; billigere å fange dem her enn i produksjon. Leser kode, kjører den ikke. |
+| **testansvarlig** | Sonnet 5.5 / medium | les/skriv/Bash | prosjekt | Skriver og kjører tester mot lokal database og falske Claude/Blob-tjenester. Mest mekanisk arbeid → Sonnet; gi `model: opus` for uvanlig vanskelige oppsett (som første versjon av test-harnessen). |
 | **frontend** | Sonnet 5.5 / medium | les/skriv/Bash | – | Godt spesifisert UI-arbeid i stort volum; Sonnet er rask og sterk nok, til halv pris av Opus. |
 | **integrasjoner** | Sonnet 5.5 / high | les/skriv/Bash + nett | – | Mye «følg API-dokumentasjonen»-arbeid (AI, push, Blob, vær). High effort fordi eksterne API-er endrer seg. |
-| **utforsker** | Haiku 5.5 / low | bare lesing | – | Søk i kodebasen — mekanisk, og Haiku er raskest og billigst. |
+| **utforsker** | Haiku 5.5 / low | bare lesing | – | Søk i kodebasen — mekanisk, og Haiku er raskest og billigst. Valgfri: kodebasen er så liten at prosjektlederen ofte søker selv. |
 
 Prinsippet (Anthropic, «Choosing a Claude model and effort level», juli 2026): mindre modell for rutinepregede og presist beskrevne oppgaver, større modell for vanskelige feil, ukjente domener og arkitektur. Behold standard effort for det meste.
 
 ## Drøftinger mellom agenter
 
 For større spørsmål (f.eks. «hva bør kalenderen kunne?») kjører prosjektlederen en drøfting: runde 1 der `produktutvikler`, `ux-designer`, `brukerstemme` og en utvikler (`frontend`/`database`) svarer hver for seg, runde 2 der alle leser sammendraget og tar stilling til uenighetene, og til slutt en anbefaling til eieren med pakker. Agentene snakker ikke direkte med hverandre; prosjektlederen samler og videresender.
+
+## Evaluering 9. oktober 2026 (prosjektleder)
+
+- **Kvalitetskontroll** var den mest verdifulle rollen: fant ekte feil før hver push (ugyldig CSS-rutenett, 500 på ugyldig dato, stående bilder avvist, Outlook-innliming).
+- **Drøftingen** (produktutvikler + ux-designer + brukerstemme + frontend) ga en god kalenderplan; brukerstemmens viktigste bidrag var spørsmålene til eieren.
+- **Frontend/database/integrasjoner** ble lite brukt — små rettelser gikk raskere i hovedøkta med full kontekst. Nå formalisert: små rettelser gjør prosjektlederen, større jobber delegeres.
+- **Hullet:** ingen rolle *kjørte* koden mot noe som lignet virkeligheten. Fire feil nådde eieren (innliming på Mac, hvite bilder i Safari, manglende logging, Blob-opplasting). → Ny rolle `testansvarlig`, tester i repoet, `/sjekk-produksjon`, loggingregel og «dokumentasjon først».
+- **Modellvalgene står seg:** feilene skyldtes manglende testing mot ekte tjenester, ikke for svake modeller. Appens AI: Opus 5.5, lav tenketid for tekst, middels for bilder/PDF.
 
 ## Overstyre modell
 
@@ -41,7 +50,8 @@ I Claude Code på nett/mobil er hovedøkta prosjektleder via `CLAUDE.md`. I term
 | `/db-migrasjon` | prosjekt | Drizzle-skjema → generert migrasjon, sync-trigger, typer |
 | `/kvalitetssjekk` | prosjekt | `npm run check` + sjekkliste |
 | `/idemyldring` | prosjekt | Kjører `produktutvikler` i egen kontekst |
-| `/lever-endring` | prosjekt (kun manuell) | Kvalitetssjekk → commit → push (= produksjon) |
+| `/lever-endring` | prosjekt (kun manuell) | Kvalitetssjekk + tester → kvalitetskontroll → commit → push (= produksjon) → `/sjekk-produksjon` |
+| `/sjekk-produksjon` | prosjekt | Etter push: deploy ferdig, migrasjoner kjørt, sidene svarer, loggene rene |
 | `vercel-react-best-practices` | Vercel | 70 ytelsesregler for React/Next |
 | `web-design-guidelines` | Vercel | UI/UX-/tilgjengelighetsreview |
 | `supabase-postgres-best-practices` | Supabase | Postgres generelt (også Neon): skjema, indekser, migrasjoner |

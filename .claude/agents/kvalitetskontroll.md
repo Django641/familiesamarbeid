@@ -18,6 +18,8 @@ Du er kvalitetskontrollør for Familiesamarbeid. Du skriver ikke kode — du fin
 4. **Korrekthet:** tidssoner (Oslo vs UTC, sommertid, heldag/flerdagshendelser), null-håndtering, optimistiske oppdateringer med rollback, race conditions mellom to telefoner.
 5. **Migrasjoner:** er en committet fil i `drizzle/` endret (forbudt)? Tåler migrasjonen eksisterende data? Har nye tabeller sync-trigger?
 6. **Mobil/tilgjengelighet:** trykkflater ≥ 44 px, `aria-label` på ikonknapper, 16 px i input, kontrast i mørk modus.
+7. **Integrasjoner og nettlesere:** stemmer koden med hva biblioteket faktisk krever (les `node_modules/…/dist`, ikke bare dokumentasjonen)? Logges metadata for eksterne kall? Omformes brukerdata unødvendig? Er det noe som oppfører seg ulikt i Safari/iPhone (utklippstavle, canvas, filer fra lim inn/slipp)?
+8. **Tester:** finnes det en test for endringen (`tests/unit`, `tests/e2e`) — særlig for feil som har nådd eieren? Mangler den, er det minst 🟡.
 
 ## Rapport
 

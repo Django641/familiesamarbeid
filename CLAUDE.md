@@ -15,15 +15,16 @@ Hovedøkta er **prosjektleder** (se `.claude/agents/prosjektleder.md`; kan også
 | `database` | Opus 5.5 | Drizzle-skjema, migrasjoner, Neon, innlogging, `lib/types.ts` |
 | `frontend` | Sonnet 5.5 | Sider, komponenter, mobil-UX, tilgjengelighet |
 | `integrasjoner` | Sonnet 5.5 | AI-ruter, push, Blob-filer, vær, senere ICS/Spond |
-| `kvalitetskontroll` | Opus 5.5 | Uavhengig review før merge (bare lesetilgang) |
+| `kvalitetskontroll` | Opus 5.5 | Uavhengig review før push — leser kode (bare lesetilgang) |
+| `testansvarlig` | Sonnet 5.5 | Skriver og kjører tester (`npm test`, `npm run e2e`) — kjører koden |
 | `produktutvikler` | Opus 5.5 | Frie forslag eieren ikke har bedt om → `docs/IDEER.md` |
 | `ux-designer` | Opus 5.5 | Visninger, flyt og skisser før noe bygges (bare lesetilgang) |
 | `brukerstemme` | Sonnet 5.5 | Tester forslag mot familiens hverdag — «ville vi brukt dette?» |
-| `utforsker` | Haiku 5.5 | Raske søk i kodebasen |
+| `utforsker` | Haiku 5.5 | Raske søk i kodebasen (valgfri — kodebasen er liten) |
 
-Begrunnelse og når man bør overstyre modell: `docs/AGENTER.md`. Forslag fra `produktutvikler` bygges ikke uten eierens ja.
+Begrunnelse og når man bør overstyre modell: `docs/AGENTER.md`. Forslag fra `produktutvikler` bygges ikke uten eierens ja. **Små rettelser** (1–3 filer, tydelig årsak) gjør prosjektlederen selv; større funksjoner og dyp datamodell-/integrasjonsjobb delegeres. Kvalitetsporten gjelder uansett.
 
-Prosjekt-skills: `/ny-funksjon`, `/db-migrasjon`, `/kvalitetssjekk`, `/idemyldring`, `/lever-endring`. Eksterne skills (kopiert inn, låst i `skills-lock.json`): `vercel-react-best-practices`, `web-design-guidelines`, `supabase-postgres-best-practices` (gjelder Postgres generelt, også Neon). Oppdater med `npx skills update`.
+Prosjekt-skills: `/ny-funksjon`, `/db-migrasjon`, `/kvalitetssjekk`, `/idemyldring`, `/lever-endring`, `/sjekk-produksjon`. Eksterne skills (kopiert inn, låst i `skills-lock.json`): `vercel-react-best-practices`, `web-design-guidelines`, `supabase-postgres-best-practices` (gjelder Postgres generelt, også Neon). Oppdater med `npx skills update`.
 
 ## Stack
 
@@ -41,6 +42,8 @@ Prosjekt-skills: `/ny-funksjon`, `/db-migrasjon`, `/kvalitetssjekk`, `/idemyldri
 ```bash
 npm run dev          # localhost:3000 (krever .env.local — `vercel env pull .env.local`)
 npm run check        # typecheck + lint + build — må være grønt før commit
+npm test             # enhetstester (tests/unit) — må være grønt før commit
+npm run e2e          # nettlesertester mot lokal PGlite + falsk Claude/Blob (tests/e2e) — ved endret brukerflyt/integrasjon
 npm run db:generate  # ny migrasjon fra endringer i lib/db/*-schema.ts
 npm run db:migrate   # kjør migrasjoner (skjer også automatisk i Vercel-builden)
 ```
@@ -72,9 +75,16 @@ Endre skjemaet i `lib/db/app-schema.ts`, kjør `npm run db:generate`, og commit 
 ## Git og levering
 
 - **Én branch:** `claude/brave-galileo-fx7ekz` er eneste branch og produksjonsbranch. Vercel-prosjektet `familiesamarbeid` deployer automatisk ved hver push. Ingen PR-er, ingen `main`.
-- **Ferdig arbeid pushes uten å spørre** når `npm run check` er grønt og `kvalitetskontroll` ikke har 🔴-funn (`/lever-endring`). Aldri force-push.
+- **Ferdig arbeid pushes uten å spørre** når `npm run check` og `npm test` er grønne, `npm run e2e` er kjørt for endret brukerflyt/integrasjon, og `kvalitetskontroll` ikke har 🔴-funn (`/lever-endring`). Etter push: `/sjekk-produksjon`. Aldri force-push.
+- **Hver feil som når eieren får en test** (`testansvarlig`).
 - Push = produksjon, så halvferdig eller risikabelt arbeid pushes ikke. Krever endringen en databasemigrasjon eller nye env-variabler, si tydelig fra til eieren hva som må gjøres og hva som ikke virker før det er gjort.
-- Ingen CI ennå (bevisst): kvalitetsporten kjøres i Claude-øktene.
+- Ingen CI ennå (bevisst): kvalitetsporten kjøres i Claude-øktene. Testene mocker Claude og Blob og kjører Chromium — Safari/iPhone og ekte tjenester testes av eieren, og loggene sjekkes rett etterpå.
+
+## Lærdommer (retro 9. okt)
+
+- Feilene som nådde eieren virket i testoppsettet, men ikke i virkeligheten (Safari, ekte Blob, ekte Claude). Derfor: tester i repoet, falske tjenester som viser hva appen *sender*, logging av metadata fra starten, og `/sjekk-produksjon` etter push.
+- Les dokumentasjon *og* bibliotekkode før integrasjonskode (`claude-api`-skillen for Claude; `node_modules/…/dist` for andre SDK-er).
+- Enkleste vei først: ikke omform brukerdata unødvendig (bilder sendes uendret når de er små nok).
 
 ## Opphav
 
