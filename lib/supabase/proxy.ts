@@ -5,7 +5,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Ruter som skal fungere uten innlogging. Alt annet sendes til /login.
 // /api/ics og /api/cron har egen beskyttelse (hemmelig token / CRON_SECRET).
-const PUBLIC_PREFIXES = ["/login", "/auth/", "/bli-med/", "/api/ics/", "/api/cron/"];
+const PUBLIC_PREFIXES = ["/login", "/auth/", "/bli-med/"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

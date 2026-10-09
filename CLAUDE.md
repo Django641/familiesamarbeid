@@ -66,9 +66,9 @@ npm run lint
 
 ## Git og levering
 
-- Standardbranch er `main`; Vercel deployer derfra. Arbeid på feature-branch → PR mot `main` → merge. Aldri force-push, aldri push direkte til `main`.
-- **Ferdig arbeid landes uten å spørre** når `npm run check` er grønt og `kvalitetskontroll` ikke har 🔴-funn: lag PR og merge i samme økt (`/lever-endring`).
-- Krever endringen SQL eller nye env-variabler: merges likevel, men SQL/variabelnavn står øverst i PR-beskrivelsen og gjentas for eieren med hva som ikke virker før det er gjort. Bare halvferdig eller risikabelt arbeid holdes tilbake.
+- **Én branch:** `claude/brave-galileo-fx7ekz` er eneste branch og produksjonsbranch. Vercel-prosjektet `familiesamarbeid` deployer automatisk ved hver push. Ingen PR-er, ingen `main`.
+- **Ferdig arbeid pushes uten å spørre** når `npm run check` er grønt og `kvalitetskontroll` ikke har 🔴-funn (`/lever-endring`). Aldri force-push.
+- Push = produksjon, så halvferdig eller risikabelt arbeid pushes ikke. Krever endringen en databasemigrasjon eller nye env-variabler, si tydelig fra til eieren hva som må gjøres og hva som ikke virker før det er gjort.
 - Ingen CI ennå (bevisst): kvalitetsporten kjøres i Claude-øktene.
 
 ## Opphav

@@ -58,6 +58,10 @@ Se `docs/OPPSETT.md` for steg-for-steg.
 
 Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 
+### På vent (eieren vil ha dem senere — ikke glem)
+- [ ] **Familiekalenderen i Outlook/Google/iPhone** (ICS-abonnement med hemmelig token per bruker). Ferdig bygget og testet tidligere — se `lib/ics.ts` og `app/api/ics/[token]/route.ts` i commit `50e5387`. Må tilpasses ny database.
+- [ ] **Spond inn i kalenderen** (Spond → Google-kalender «Barna» → iCal-import med Vercel Cron). Bygget i `lib/ics-import.ts`, `app/api/cron/sync-calendars` og `innstillinger/external-calendars.tsx` i commit `50e5387`.
+
 ### P1
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
 - [ ] Ukevisning (7 kolonner) som alternativ til agenda
