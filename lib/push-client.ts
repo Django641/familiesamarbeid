@@ -9,21 +9,3 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuf
   for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
   return output;
 }
-
-/**
- * Sender push-varsel til den andre voksne (fire-and-forget).
- * `message` er teksten etter avsendernavnet, f.eks. `la til «Melk» på handlelista`.
- * Feiler stille — varsler skal aldri blokkere en mutasjon.
- */
-export function notifyHousehold(message: string, url: string, tag?: string) {
-  try {
-    fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, url, tag }),
-      keepalive: true,
-    }).catch(() => {});
-  } catch {
-    // ignorer
-  }
-}

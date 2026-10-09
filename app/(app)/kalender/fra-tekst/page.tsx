@@ -1,12 +1,12 @@
 import { TopBar } from "@/components/top-bar";
-import { getHousehold } from "@/lib/household";
+import { getFamily } from "@/lib/session";
 
 import { TextImport } from "./text-import";
 
 export const metadata = { title: "Hendelser fra tekst" };
 
-export default async function FromTextPage() {
-  const { household, people } = await getHousehold();
+export default async function FromTextPage({ searchParams }: { searchParams: Promise<{ tekst?: string }> }) {
+  const [{ people }, { tekst }] = await Promise.all([getFamily(), searchParams]);
   return (
     <>
       <TopBar title="Fra tekst" />
@@ -15,7 +15,7 @@ export default async function FromTextPage() {
           Lim inn en melding fra Spond, Skolemelding, e-post eller SMS. AI-en foreslår hendelser — du sjekker og
           retter før noe lagres.
         </p>
-        <TextImport householdId={household.id} people={people} />
+        <TextImport people={people} initialText={tekst?.slice(0, 8000) ?? ""} />
       </main>
     </>
   );

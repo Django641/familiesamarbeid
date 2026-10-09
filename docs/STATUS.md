@@ -2,56 +2,55 @@
 
 Prosjektets statusfil. Prosjektlederen holder den oppdatert. Les den først i hver økt.
 
-## ⏳ Venter på eieren (oppsett)
+## ⏳ Venter på eieren
 
-Se `docs/OPPSETT.md` for steg-for-steg.
+Se `docs/OPPSETT.md`.
 
-- [ ] Opprett Vercel-prosjekt koblet til GitHub-repoet `familiesamarbeid`
-- [ ] Legg til Supabase via Vercel Marketplace (region Frankfurt) og koble til prosjektet
-- [ ] Kjør `supabase/migrations/0001_init.sql` i Supabase → SQL Editor
-- [ ] Supabase Auth: URL-konfigurasjon (Site URL + redirect-URL-er) og e-postbekreftelse
-- [ ] Env-variabler i Vercel: `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, VAPID-nøkler
-- [ ] Begge lager konto, inviterer hverandre, legger appen på Hjem-skjermen og slår på varsler
-- [ ] Abonner på familiekalenderen i Outlook (jobb) og evt. Google/iPhone
-- [ ] Spond → Google-kalender «Barna» → lim inn iCal-lenken under Innstillinger
+- [ ] Koble Neon til Vercel-prosjektet (ett klikk) og redeploy
+- [ ] Legg samboerens e-post i `ALLOWED_EMAILS` (din er lagt inn)
+- [ ] Legg inn `ANTHROPIC_API_KEY` (valgfritt — AI-sortering og «Fra tekst»)
+- [ ] Begge lager konto, legger appen på Hjem-skjermen og slår på Face ID og varsler
 
 ## 🔎 Venter på verifisering i praksis
 
-- [ ] Kalenderimport av Spond via Google-kalender (gjentakende hendelser, endringer, slettinger)
-- [ ] Outlook-abonnement på jobb (noen arbeidsgivere blokkerer internettkalendere)
-- [ ] «Fra tekst» på ekte meldinger fra Skolemelding/Spond
+- [ ] Face ID (passkeys) i appen fra Hjem-skjermen på iPhone
 - [ ] Push-varsler på begge iPhoner
+- [ ] Opplasting av store bilder/PDF-er til Blob fra iPhone
+- [ ] «Fra tekst» på ekte meldinger fra Skolemelding/Spond
 
 ## ✅ Gjort
 
-- [x] Grunnmur: Next.js 16, Supabase-auth (e-post/passord), husstand med invitasjonskode, personer (voksne + barn) med farger
+- [x] **Stack byttet til Vercel-integrerte tjenester** (eierens ønske): Neon Postgres + Drizzle, Better Auth (e-post/passord + Face ID, kun `ALLOWED_EMAILS`), Vercel Blob (privat), live-synk via databasetriggere + 5-sekunders spørring. Supabase er fjernet.
+- [x] Vercel-prosjekt, Blob-lagring og miljøvariabler satt opp av Claude
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
-- [x] **«Fra tekst»:** lim inn melding → AI foreslår hendelser → rediger → lagre
-- [x] **Kalenderabonnement ut** (ICS med hemmelig token per bruker) for Outlook/Google/iPhone
-- [x] **Kalenderimport inn** (ICS-lenker, f.eks. Spond via Google), Vercel Cron hver 30. min + «Synk nå»
-- [x] **Handleliste** portert fra Hyttekompis: dagligvare/annet, butikkgruppering, AI-sortering etter butikkrekkefølge, auto-innsortering, rediger, rydd med angre
-- [x] **Gjøremål** med ansvarlig og frist, «Mine»-filter, rydd med angre
-- [x] **Beskjeder** (chat-stil) med festing — festede vises på Hjem
-- [x] **Dokumenter** i privat bucket med kategorier
+- [x] **«Fra tekst»:** lim inn melding → AI foreslår hendelser → rediger → lagre. Kan også startes fra en beskjed.
+- [x] **Handleliste:** alle funksjonene fra Hyttekompis (dagligvare/annet, butikkgruppering, AI-sortering, auto-innsortering, rydd med angre) med nytt utseende — trykk på vare for å redigere, angre ved sletting
+- [x] **Gjøremål:** gruppert etter frist (Forfalt/I dag/I morgen/Denne uka/Senere), raske «hvem/når»-valg, rediger i bunnark, angre, «Mine og felles»
+- [x] **Beskjeder:** chat med dag-skiller og grupperte bobler; trykk på beskjed → fest, gjør om til gjøremål, legg i kalenderen, kopier, slett
+- [x] **Dokumenter:** privat Blob, søk, kategorier med antall, miniatyrbilder, fremdrift ved opplasting, gi nytt navn/flytt/last ned/slett
 - [x] **Hjem:** vær Helsfyr + Hedalen, festede beskjeder, frister, neste sju dager
-- [x] Live-synk (Supabase Realtime), web push, PWA, mørk modus
+- [x] **Innstillinger:** familien (navn/farge), Face ID, push, tilgang (nytt passord for den andre voksne), logg ut
+- [x] Ende-til-ende-test med to brukere (PGlite lokalt): oppstart, alle skjermer, live-synk på ~5 s, mørk modus
 - [x] Claude Code-oppsett: agenter med modellvalg, skills, regler, hooks
-- [x] Første `kvalitetskontroll`-runde: invitasjonskode 12 tegn + maks to voksne, trygg `next`-redirect, live-synk av slettinger, ICS-escaping, https-krav og størrelsesgrense på kalenderimport, trykkflater og kontrast i mørk modus
-- [x] Migrasjon 0001 testet i PGlite (Postgres 17): kjører to ganger uten feil, RLS isolerer familier (også Storage), anon kan ikke bli med
+- [x] Første `kvalitetskontroll`- og `produktutvikler`-runde
 
 ## 🧭 Beslutninger
 
-- **Database:** Supabase via Vercel Marketplace (ikke Neon) — gir auth, Realtime og Storage i én tjeneste, og samme mønster som Hyttekompis. Faktureres via Vercel.
+- **Database:** Neon via Vercel Marketplace (eierens valg), Drizzle ORM. Migrasjoner kjøres automatisk i builden — ingen manuell SQL.
+- **Innlogging:** Better Auth i egen database (gratis, passkeys/Face ID). Vurdert: Neon Auth (beta, ingen passkeys) og Clerk (betalt for passkeys/allowlist).
+- **Live-synk:** spørring hvert 5. s mens appen er synlig, mot en teller som databasetriggere øker. Enkelt, ingen ekstra tjeneste, og databasen sover når appen er lukket. Oppgraderingsvei hvis det trengs: Upstash Realtime.
+- **Én familie, ingen husstand-modell:** tilgang styres av `ALLOWED_EMAILS` + innlogging.
+- **Glemt passord uten e-post:** Face ID, eller den andre voksne setter nytt passord i Innstillinger.
 - **AI:** Anthropic (samme nøkkel som Hyttekompis), Claude Opus 5.5 med lav effort. OpenAI trengs ikke nå.
-- **Spond:** ingen offisiell API, og vi lagrer ikke Spond-passord. Spond synker til en Google-kalender som appen importerer via iCal. Uoffisielle Spond-API-er er vurdert og valgt bort (bryter lett, krever passord).
-- **Skolemelding:** ingen API/eksport. Dekkes av «Fra tekst» (kopier meldingen inn).
+- **Git:** én branch som deployes rett til produksjon, ingen PR-er.
 - **Handleliste:** to statuser (må kjøpes / kjøpt) — «pakket» var hytte-spesifikt.
-- **Gjentakelse:** «gjenta ukentlig» lager enkeltkopier med felles `series_id` (enkelt, redigerbart per gang). Ekte RRULE kun via import.
-- **Dokumenter:** Supabase Storage (ikke Vercel Blob) så tilgang styres av samme RLS-modell.
+- **Gjentakelse:** «gjenta ukentlig» lager enkeltkopier med felles `series_id` (enkelt, redigerbart per gang).
+- **Skolemelding:** ingen API/eksport. Dekkes av «Fra tekst».
 
 ## ❌ Vurdert og droppet
 
 - **Uoffisiell Spond-API med brukernavn/passord** — skjør og krever lagring av passord.
+- **Supabase** — byttet ut med Vercel-integrerte tjenester etter eierens ønske.
 - **GitHub Actions CI** — unødvendig så lenge alt går via Claude-økter som kjører `npm run check`.
 
 ## 📋 Backlog (prioritert)
@@ -59,18 +58,18 @@ Se `docs/OPPSETT.md` for steg-for-steg.
 Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 
 ### På vent (eieren vil ha dem senere — ikke glem)
-- [ ] **Familiekalenderen i Outlook/Google/iPhone** (ICS-abonnement med hemmelig token per bruker). Ferdig bygget og testet tidligere — se `lib/ics.ts` og `app/api/ics/[token]/route.ts` i commit `50e5387`. Må tilpasses ny database.
+- [ ] **Familiekalenderen i Outlook/Google/iPhone** (ICS-abonnement med hemmelig token per bruker). Ferdig bygget og testet tidligere — se `lib/ics.ts` og `app/api/ics/[token]/route.ts` i commit `50e5387`. Må tilpasses Drizzle/Neon (token-tabell + `api/ics`-rute utenfor innlogging).
 - [ ] **Spond inn i kalenderen** (Spond → Google-kalender «Barna» → iCal-import med Vercel Cron). Bygget i `lib/ics-import.ts`, `app/api/cron/sync-calendars` og `innstillinger/external-calendars.tsx` i commit `50e5387`.
 
 ### P1
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
 - [ ] Ukevisning (7 kolonner) som alternativ til agenda
-- [ ] Rediger ett gjøremål (tittel/frist/ansvarlig) i lista
-- [ ] Angre ved sletting av enkeltvare/hendelse
+- [ ] Angre ved sletting av hendelse
 - [ ] Varsel kvelden før/morgenen samme dag for hendelser (push via cron)
 
 ### P2
-- [ ] Videresend e-post til appen → hendelsesutkast (inbound e-post, f.eks. Resend)
+- [ ] Videresend e-post til appen → hendelsesutkast (inbound e-post, f.eks. Resend) — se `docs/IDEER.md`
+- [ ] Passord-reset på e-post (Resend) hvis Face ID-løsningen ikke holder
 - [ ] Ukentlig e-postoppsummering til begge (privat og/eller jobb)
 - [ ] Bilder/vedlegg på hendelser (f.eks. invitasjon til bursdag)
 

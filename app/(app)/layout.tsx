@@ -1,14 +1,14 @@
+import { LiveSync } from "@/components/live-sync";
 import { MobileNav } from "@/components/mobile-nav";
-import { RealtimeSync } from "@/components/realtime-sync";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { getHousehold } from "@/lib/household";
+import { getFamily } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { household } = await getHousehold();
+  await getFamily(); // innlogget + har fullført oppstart
   return (
     <div className="min-h-dvh pb-24">
       <ServiceWorkerRegister />
-      <RealtimeSync householdId={household.id} />
+      <LiveSync />
       {children}
       <MobileNav />
     </div>

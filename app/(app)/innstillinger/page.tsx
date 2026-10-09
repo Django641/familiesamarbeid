@@ -1,46 +1,42 @@
-import { TopBar } from "@/components/top-bar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getHousehold } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { inArray } from "drizzle-orm";
 
+import { TopBar } from "@/components/top-bar";
+import { allowedEmails } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { user as userTable } from "@/lib/db/schema";
+import { getFamily } from "@/lib/session";
+
+import { AccessCard } from "./access-card";
+import { AccountCard } from "./account-card";
 import { FamilyEditor } from "./family-editor";
-import { InviteShare } from "./invite-share";
+import { PasskeyCard } from "./passkey-card";
 import { PushToggle } from "./push-toggle";
 
 export const metadata = { title: "Innstillinger" };
 
 export default async function SettingsPage() {
-  const [{ household, people, userId }, supabase] = await Promise.all([getHousehold(), createClient()]);
-  const { data: auth } = await supabase.auth.getUser();
+  const { people, me, userId } = await getFamily();
+  const emails = allowedEmails();
+  const registered = emails.length
+    ? await db.select({ id: userTable.id, email: userTable.email }).from(userTable).where(inArray(userTable.email, emails))
+    : [];
+  const myEmail = registered.find((u) => u.id === userId)?.email ?? null;
+  const partner = people.find((p) => p.kind === "voksen" && p.user_id && p.user_id !== userId) ?? null;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
-  const adults = people.filter((p) => p.kind === "voksen");
 
   return (
     <>
       <TopBar title="Innstillinger" />
       <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-4">
-        <FamilyEditor householdId={household.id} people={people} />
-
-        {adults.length < 2 ? <InviteShare code={household.invite_code} appUrl={appUrl} /> : null}
-
-        <PushToggle householdId={household.id} userId={userId} />
-
-        {adults.length >= 2 ? <InviteShare code={household.invite_code} appUrl={appUrl} compact /> : null}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Konto</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <p className="text-sm text-[var(--color-muted)]">Logget inn som {auth.user?.email}</p>
-            <form action="/auth/logout" method="post">
-              <Button type="submit" variant="outline" className="w-full">
-                Logg ut
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <FamilyEditor people={people} meId={me.id} />
+        <PasskeyCard />
+        <PushToggle />
+        <AccessCard
+          appUrl={appUrl}
+          pending={emails.filter((e) => !registered.some((r) => r.email.toLowerCase() === e))}
+          partner={partner ? { id: partner.id, name: partner.name } : null}
+        />
+        <AccountCard email={myEmail} />
       </main>
     </>
   );

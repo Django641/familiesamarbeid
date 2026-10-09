@@ -1,43 +1,30 @@
 import { redirect } from "next/navigation";
 
 import { APP_NAME } from "@/lib/config";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { people } from "@/lib/db/schema";
+import { requireUser } from "@/lib/session";
 
 import { OnboardingForm } from "./onboarding-form";
 
 export const metadata = { title: "Kom i gang" };
 
-export default async function OnboardingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ code?: string }>;
-}) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const [{ data: membership }, { data: profile }, { code }] = await Promise.all([
-    supabase
-      .from("household_members")
-      .select("household_id")
-      .eq("user_id", user.id)
-      .order("created_at")
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
-    searchParams,
-  ]);
-  if (membership) redirect("/hjem");
+export default async function OnboardingPage() {
+  const user = await requireUser();
+  const all = await db.select().from(people);
+  if (all.some((p) => p.user_id === user.id)) redirect("/hjem");
+  const children = all.filter((p) => p.kind === "barn").map((p) => p.name);
+  const partner = all.find((p) => p.kind === "voksen")?.name ?? null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-[var(--color-primary)]">{APP_NAME}</h1>
-        <p className="mt-2 text-[var(--color-muted)]">Sett opp familien — tar under ett minutt.</p>
+        <p className="mt-2 text-[var(--color-muted)]">
+          {partner ? `${partner} har allerede satt opp familien. Hva heter du?` : "Velkommen! To spørsmål, så er du i gang."}
+        </p>
       </div>
-      <OnboardingForm defaultName={profile?.display_name ?? ""} defaultCode={code?.toUpperCase() ?? ""} />
+      <OnboardingForm askChildren={children.length === 0} existingChildren={children} />
     </main>
   );
 }

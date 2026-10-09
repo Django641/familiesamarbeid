@@ -53,7 +53,19 @@ export function emptyDraft(dateKey?: string): EventDraft {
 }
 
 /** Gjør et utkast om til kolonner for events-tabellen. Returnerer feilmelding ved ugyldig input. */
-export function draftToRow(d: EventDraft): { row: Record<string, unknown> } | { error: string } {
+export type EventRowDraft = {
+  title: string;
+  category: string;
+  all_day: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  description: string | null;
+  person_ids: string[];
+  series_id?: string;
+};
+
+export function draftToRow(d: EventDraft): { row: EventRowDraft } | { error: string } {
   const title = d.title.trim();
   if (!title) return { error: "Skriv en tittel." };
   if (!d.date) return { error: "Velg en dato." };

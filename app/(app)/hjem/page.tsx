@@ -7,10 +7,13 @@ import { buttonClass } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { WeatherCard } from "@/components/weather-card";
 import { WEATHER_LOCATIONS, categoryMeta } from "@/lib/config";
-import { buildAgenda, overlapFilter, rangeBounds } from "@/lib/events";
-import { getHousehold } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
-import type { CalendarEvent, Message, Task } from "@/lib/types";
+import { and, asc, count, desc, eq, isNotNull, lte } from "drizzle-orm";
+
+import { db } from "@/lib/db";
+import { messages, shopping_items, tasks } from "@/lib/db/schema";
+import { buildAgenda } from "@/lib/events";
+import { eventsInRange } from "@/lib/events-db";
+import { getFamily } from "@/lib/session";
 import { getForecast } from "@/lib/weather";
 import { addDays, dayLabel, osloDateKey } from "@/lib/utils";
 
@@ -27,55 +30,34 @@ function greeting(): string {
 }
 
 export default async function HomePage() {
-  const [{ household, people, me }, supabase] = await Promise.all([getHousehold(), createClient()]);
-
+  const { people, me } = await getFamily();
   const todayKey = osloDateKey(new Date());
   const toKey = addDays(todayKey, 6);
-  const { startIso, endIso } = rangeBounds(todayKey, toKey);
 
-  const [events, pinned, tasks, shopping, ...forecasts] = await Promise.all([
-    supabase
-      .from("events")
-      .select("*")
-      .eq("household_id", household.id)
-      .lt("starts_at", endIso)
-      .or(overlapFilter(startIso))
-      .order("starts_at")
-      .limit(200),
-    supabase
-      .from("messages")
-      .select("*")
-      .eq("household_id", household.id)
-      .eq("important", true)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from("tasks")
-      .select("*")
-      .eq("household_id", household.id)
-      .eq("done", false)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(50),
-    supabase
-      .from("shopping_items")
-      .select("id", { count: "exact", head: true })
-      .eq("household_id", household.id)
-      .eq("status", "ma_kjopes"),
+  const [events, pinned, dueSoon, [{ value: openTasks }], [{ value: toBuy }], ...forecasts] = await Promise.all([
+    eventsInRange(todayKey, toKey, 200),
+    db.select().from(messages).where(eq(messages.pinned, true)).orderBy(desc(messages.created_at)).limit(5),
+    db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.done, false), isNotNull(tasks.due_date), lte(tasks.due_date, addDays(todayKey, 2))))
+      .orderBy(asc(tasks.due_date))
+      .limit(10),
+    db.select({ value: count() }).from(tasks).where(eq(tasks.done, false)),
+    db.select({ value: count() }).from(shopping_items).where(eq(shopping_items.status, "ma_kjopes")),
     ...WEATHER_LOCATIONS.map((l) => getForecast(l.lat, l.lng)),
   ]);
 
-  const week = buildAgenda((events.data ?? []) as CalendarEvent[], todayKey, toKey);
-  const openTasks = (tasks.data ?? []) as Task[];
-  const dueSoon = openTasks.filter((t) => t.due_date && t.due_date <= addDays(todayKey, 2));
+  const week = buildAgenda(events, todayKey, toKey);
   const weatherRows = WEATHER_LOCATIONS.map((l, i) => ({ name: l.name, forecast: forecasts[i] ?? [] }));
 
   return (
     <>
-      <TopBar title={`${greeting()}${me ? `, ${me.name}` : ""}`} />
+      <TopBar title={`${greeting()}, ${me.name}`} />
       <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-4">
         <WeatherCard rows={weatherRows} />
 
-        {((pinned.data ?? []) as Message[]).map((m) => (
+        {pinned.map((m) => (
           <Link
             key={m.id}
             href="/beskjeder"
@@ -87,9 +69,9 @@ export default async function HomePage() {
         ))}
 
         <div className="grid grid-cols-3 gap-2">
-          <Stat href="/handleliste" icon={<ShoppingCart className="h-5 w-5" aria-hidden />} value={shopping.count ?? 0} label="å handle" />
-          <Stat href="/gjoremal" icon={<ListChecks className="h-5 w-5" aria-hidden />} value={openTasks.length} label="gjøremål" />
-          <Stat href="/beskjeder" icon={<MessageCircle className="h-5 w-5" aria-hidden />} value={(pinned.data ?? []).length} label="festet" />
+          <Stat href="/handleliste" icon={<ShoppingCart className="h-5 w-5" aria-hidden />} value={toBuy} label="å handle" />
+          <Stat href="/gjoremal" icon={<ListChecks className="h-5 w-5" aria-hidden />} value={openTasks} label="gjøremål" />
+          <Stat href="/beskjeder" icon={<MessageCircle className="h-5 w-5" aria-hidden />} value={pinned.length} label="festet" />
         </div>
 
         {dueSoon.length > 0 ? (

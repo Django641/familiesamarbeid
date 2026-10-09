@@ -1,33 +1,30 @@
-import { TopBar } from "@/components/top-bar";
-import { getHousehold } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
-import type { Task } from "@/lib/types";
+import { asc, desc, eq, gte, or } from "drizzle-orm";
 
-import { TaskList } from "./task-list";
+import { TopBar } from "@/components/top-bar";
+import { db } from "@/lib/db";
+import { tasks } from "@/lib/db/schema";
+import { getFamily } from "@/lib/session";
+
+import { TaskBoard } from "./task-board";
 
 export const metadata = { title: "Gjøremål" };
 
 export default async function TasksPage() {
-  const [{ household, people, me }, supabase] = await Promise.all([getHousehold(), createClient()]);
-  const { data } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("household_id", household.id)
-    .order("done", { ascending: true })
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(300);
+  const { people, me } = await getFamily();
+  // Åpne gjøremål + det som er gjort siste 14 dager (eldre gjorte vises ikke).
+  const since = new Date(Date.now() - 14 * 86_400_000);
+  const rows = await db
+    .select()
+    .from(tasks)
+    .where(or(eq(tasks.done, false), gte(tasks.done_at, since)))
+    .orderBy(asc(tasks.due_date), desc(tasks.created_at))
+    .limit(400);
 
   return (
     <>
       <TopBar title="Gjøremål" />
       <main className="mx-auto max-w-xl px-4 py-4">
-        <TaskList
-          householdId={household.id}
-          tasks={(data ?? []) as Task[]}
-          people={people}
-          myPersonId={me?.id ?? null}
-        />
+        <TaskBoard tasks={rows} people={people} me={me} />
       </main>
     </>
   );

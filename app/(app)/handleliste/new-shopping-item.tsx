@@ -1,93 +1,73 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { notifyHousehold } from "@/lib/push-client";
-import { placeShoppingItem } from "@/lib/shopping-client";
-import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
+
+import { addShoppingItem } from "./actions";
 
 type Category = "dagligvare" | "annet";
 
-export function NewShoppingItem({ householdId }: { householdId: string }) {
-  const router = useRouter();
+/** Legg til vare: ett felt + Enter. Feltet tømmes med en gang, så man kan skrive neste vare. */
+export function NewShoppingItem() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Category>("dagligvare");
   const [store, setStore] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    setSaving(true);
     setError(null);
-    const supabase = createClient();
-    const { data, error: dbError } = await supabase
-      .from("shopping_items")
-      .insert({
-        household_id: householdId,
-        name: trimmed,
-        category,
-        store: category === "annet" ? store.trim() || null : null,
-      })
-      .select("id")
-      .single();
-    setSaving(false);
-    if (dbError) {
-      // Behold teksten så ingenting forsvinner stille (f.eks. uten nett).
-      setError("Klarte ikke å legge til. Prøv igjen.");
-      return;
-    }
-    notifyHousehold(`la til «${trimmed}» på handlelista`, "/handleliste", "shopping");
-    if (category === "dagligvare" && data) placeShoppingItem(data.id);
     setName("");
-    setStore("");
-    router.refresh();
+    inputRef.current?.focus();
+    const result = await addShoppingItem({ name: trimmed, category, store });
+    if (result.error) {
+      // Legg teksten tilbake så ingenting forsvinner stille (f.eks. uten nett).
+      setName(trimmed);
+      setError("Klarte ikke å legge til. Prøv igjen.");
+    }
   }
 
   return (
-    <form onSubmit={submit} className="mb-4 flex flex-col gap-2">
-      <Input
-        placeholder="Legg til vare …"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        enterKeyHint="send"
-      />
-      <div role="radiogroup" className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--color-bg)] p-1">
-        {(["dagligvare", "annet"] as Category[]).map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={category === c}
-            onClick={() => setCategory(c)}
-            className={cn(
-              "h-10 rounded-lg text-sm font-medium transition-colors",
-              category === c
-                ? "bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm"
-                : "text-[var(--color-muted)]"
-            )}
-          >
-            {c === "dagligvare" ? "Dagligvare" : "Annet"}
-          </button>
-        ))}
+    <form onSubmit={submit} className="mb-5 flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Input
+          ref={inputRef}
+          aria-label="Ny vare"
+          placeholder={category === "dagligvare" ? "Melk, brød, bananer …" : "Lyspærer, gave, maling …"}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          enterKeyHint="send"
+          autoComplete="off"
+        />
+        <Button type="submit" size="icon" className="h-12 w-12 shrink-0" aria-label="Legg til vare" disabled={!name.trim()}>
+          <Plus className="h-6 w-6" aria-hidden />
+        </Button>
       </div>
+      <Segmented
+        label="Kategori"
+        value={category}
+        onChange={setCategory}
+        options={[
+          { value: "dagligvare", label: "Dagligvare" },
+          { value: "annet", label: "Annet" },
+        ]}
+      />
       {category === "annet" ? (
         <Input
-          placeholder="Butikk (valgfri, f.eks. Clas Ohlson)"
+          aria-label="Butikk"
+          placeholder="Butikk (valgfritt), f.eks. Clas Ohlson"
           value={store}
           onChange={(e) => setStore(e.target.value)}
           autoComplete="off"
         />
       ) : null}
-      <Button type="submit" disabled={saving || !name.trim()}>
-        Legg til
-      </Button>
       {error ? (
         <p role="alert" className="text-sm text-[var(--color-danger)]">
           {error}

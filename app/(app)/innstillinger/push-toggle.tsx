@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
 import { urlBase64ToUint8Array } from "@/lib/push-client";
+
+import { removePushSubscription, savePushSubscription } from "./actions";
 
 type PushState =
   | "loading" // sjekker støtte/eksisterende abonnement
@@ -16,7 +17,7 @@ type PushState =
   | "on"
   | "working"; // holder på å skru av/på
 
-export function PushToggle({ householdId, userId }: { householdId: string; userId: string }) {
+export function PushToggle() {
   const [state, setState] = useState<PushState>("loading");
   const [error, setError] = useState<string | null>(null);
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -70,18 +71,8 @@ export function PushToggle({ householdId, userId }: { householdId: string; userI
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
         throw new Error("Ufullstendig abonnement");
       }
-      const supabase = createClient();
-      const { error: dbError } = await supabase.from("push_subscriptions").upsert(
-        {
-          household_id: householdId,
-          user_id: userId,
-          endpoint: json.endpoint,
-          p256dh: json.keys.p256dh,
-          auth: json.keys.auth,
-        },
-        { onConflict: "endpoint" }
-      );
-      if (dbError) throw dbError;
+      const res = await savePushSubscription({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth });
+      if (res.error) throw new Error(res.error);
       setState("on");
     } catch {
       setError("Klarte ikke å aktivere varsler. Prøv igjen.");
@@ -96,8 +87,7 @@ export function PushToggle({ householdId, userId }: { householdId: string; userI
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
-        const supabase = createClient();
-        await supabase.from("push_subscriptions").delete().eq("endpoint", subscription.endpoint);
+        await removePushSubscription(subscription.endpoint);
         await subscription.unsubscribe();
       }
       setState("off");

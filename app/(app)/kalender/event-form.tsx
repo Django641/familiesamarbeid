@@ -11,21 +11,19 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EVENT_CATEGORIES } from "@/lib/config";
-import { type EventDraft, draftToRow } from "@/lib/event-draft";
-import { notifyHousehold } from "@/lib/push-client";
-import { createClient } from "@/lib/supabase/client";
+import { type EventDraft, type EventRowDraft, draftToRow } from "@/lib/event-draft";
 import type { CalendarEvent, Person } from "@/lib/types";
 import { addDays } from "@/lib/utils";
+
+import { createEvents, deleteEvent, updateEvent } from "./actions";
 
 type Repeat = "none" | "weekly" | "biweekly";
 
 export function EventForm({
-  householdId,
   people,
   initial,
   event,
 }: {
-  householdId: string;
   people: Person[];
   initial: EventDraft;
   /** Satt når vi redigerer en eksisterende hendelse. */
@@ -56,30 +54,21 @@ export function EventForm({
     }
     setBusy(true);
     setError(null);
-    const supabase = createClient();
-
-    if (event) {
-      const { error: dbError } = await supabase.from("events").update(result.row).eq("id", event.id);
-      setBusy(false);
-      if (dbError) {
-        setError("Klarte ikke å lagre. Prøv igjen.");
+    try {
+      const res = event
+        ? await updateEvent(event.id, result.row)
+        : await createEvents(expandRepeat(result.row, draft, repeat, repeatUntil));
+      if (res.error) {
+        setError(res.error);
+        setBusy(false);
         return;
       }
-    } else {
-      const rows = expandRepeat(result.row, draft, repeat, repeatUntil).map((r) => ({
-        ...r,
-        household_id: householdId,
-      }));
-      const { error: dbError } = await supabase.from("events").insert(rows);
+    } catch {
+      setError("Klarte ikke å lagre. Prøv igjen.");
       setBusy(false);
-      if (dbError) {
-        setError("Klarte ikke å lagre. Prøv igjen.");
-        return;
-      }
-      notifyHousehold(`la inn «${draft.title.trim()}» i kalenderen`, "/kalender", "calendar");
+      return;
     }
     router.push("/kalender");
-    router.refresh();
   }
 
   async function remove(wholeSeries: boolean) {
@@ -87,17 +76,14 @@ export function EventForm({
     const question = wholeSeries ? "Slette alle hendelsene i serien?" : "Slette hendelsen?";
     if (!window.confirm(question)) return;
     setBusy(true);
-    const supabase = createClient();
-    const query = supabase.from("events").delete();
-    const { error: dbError } =
-      wholeSeries && event.series_id ? await query.eq("series_id", event.series_id) : await query.eq("id", event.id);
-    setBusy(false);
-    if (dbError) {
+    try {
+      await deleteEvent(event.id, wholeSeries);
+    } catch {
       setError("Klarte ikke å slette. Prøv igjen.");
+      setBusy(false);
       return;
     }
     router.push("/kalender");
-    router.refresh();
   }
 
   return (
@@ -238,16 +224,11 @@ export function EventForm({
 }
 
 /** Lager kopier for «gjenta hver uke/annenhver uke» (maks 60). Alle får samme series_id. */
-function expandRepeat(
-  row: Record<string, unknown>,
-  draft: EventDraft,
-  repeat: Repeat,
-  until: string
-): Record<string, unknown>[] {
+function expandRepeat(row: EventRowDraft, draft: EventDraft, repeat: Repeat, until: string): EventRowDraft[] {
   if (repeat === "none" || !until || until <= draft.date) return [row];
   const step = repeat === "weekly" ? 7 : 14;
   const seriesId = crypto.randomUUID();
-  const rows: Record<string, unknown>[] = [];
+  const rows: EventRowDraft[] = [];
   for (let offset = 0, i = 0; addDays(draft.date, offset) <= until && i < 60; offset += step, i++) {
     const shifted = draftToRow({
       ...draft,

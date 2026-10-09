@@ -3,7 +3,9 @@ import { z } from "zod";
 
 import { isAiConfigured, structuredCall } from "@/lib/anthropic";
 import { EVENT_CATEGORIES } from "@/lib/config";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { people as peopleTable } from "@/lib/db/schema";
+import { getSession } from "@/lib/session";
 import { osloDateKey } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -73,11 +75,7 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Ikke autentisert" }, { status: 401 });
+  if (!(await getSession())) return NextResponse.json({ error: "Ikke autentisert" }, { status: 401 });
 
   if (!isAiConfigured()) {
     return NextResponse.json(
@@ -89,9 +87,8 @@ export async function POST(request: Request) {
   const parsedBody = RequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsedBody.success) return NextResponse.json({ error: "Lim inn litt tekst først." }, { status: 400 });
 
-  // Familiemedlemmene (RLS: bare egen husstand)
-  const { data: people } = await supabase.from("people").select("name, kind");
-  const family = (people ?? []).map((p) => `${p.name} (${p.kind})`).join(", ") || "ukjent";
+  const people = await db.select({ name: peopleTable.name, kind: peopleTable.kind }).from(peopleTable);
+  const family = people.map((p) => `${p.name} (${p.kind})`).join(", ") || "ukjent";
 
   const today = osloDateKey(new Date());
   const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString("nb-NO", { weekday: "long", timeZone: "UTC" });

@@ -1,9 +1,22 @@
-import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
+import { NextResponse, type NextRequest } from "next/server";
 
-import { updateSession } from "@/lib/supabase/proxy";
+// Rask, optimistisk sjekk: sender alle uten sesjons-cookie til /login.
+// Den ekte sjekken skjer i hver side/server action/rute (requireUser / getSession).
+const PUBLIC_PREFIXES = ["/login", "/api/auth/"];
 
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
+export function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
+
+  if (!getSessionCookie(request)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
 }
 
 export const config = {

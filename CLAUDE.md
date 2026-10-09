@@ -12,57 +12,60 @@ Hovedøkta er **prosjektleder** (se `.claude/agents/prosjektleder.md`; kan også
 
 | Agent | Modell | Brukes til |
 |---|---|---|
-| `database` | Opus 5.5 | Migrasjoner, RLS, Supabase, `lib/types.ts` |
+| `database` | Opus 5.5 | Drizzle-skjema, migrasjoner, Neon, innlogging, `lib/types.ts` |
 | `frontend` | Sonnet 5.5 | Sider, komponenter, mobil-UX, tilgjengelighet |
-| `integrasjoner` | Sonnet 5.5 | ICS inn/ut, Spond, cron, push, AI-ruter, vær |
+| `integrasjoner` | Sonnet 5.5 | AI-ruter, push, Blob-filer, vær, senere ICS/Spond |
 | `kvalitetskontroll` | Opus 5.5 | Uavhengig review før merge (bare lesetilgang) |
 | `produktutvikler` | Opus 5.5 | Frie forslag eieren ikke har bedt om → `docs/IDEER.md` |
 | `utforsker` | Haiku 5.5 | Raske søk i kodebasen |
 
 Begrunnelse og når man bør overstyre modell: `docs/AGENTER.md`. Forslag fra `produktutvikler` bygges ikke uten eierens ja.
 
-Prosjekt-skills: `/ny-funksjon`, `/db-migrasjon`, `/kvalitetssjekk`, `/idemyldring`, `/lever-endring`. Eksterne skills (kopiert inn, låst i `skills-lock.json`): `vercel-react-best-practices`, `web-design-guidelines`, `supabase-postgres-best-practices`. Oppdater med `npx skills update`.
+Prosjekt-skills: `/ny-funksjon`, `/db-migrasjon`, `/kvalitetssjekk`, `/idemyldring`, `/lever-endring`. Eksterne skills (kopiert inn, låst i `skills-lock.json`): `vercel-react-best-practices`, `web-design-guidelines`, `supabase-postgres-best-practices` (gjelder Postgres generelt, også Neon). Oppdater med `npx skills update`.
 
 ## Stack
 
-- Next.js 16 (App Router, Turbopack, `proxy.ts`) + React 19 + TypeScript strict + Tailwind v4
-- Supabase via **Vercel Marketplace**: Postgres + Auth (e-post/passord) + Realtime + Storage. Nøkler: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (klient/server) og `SUPABASE_SECRET_KEY` (kun `lib/supabase/admin.ts`)
+- Next.js 16 (App Router, Turbopack, `proxy.ts`, Server Actions) + React 19 + TypeScript strict + Tailwind v4
+- **Neon Postgres** via Vercel Marketplace (fra1) + **Drizzle ORM** (`lib/db/`) over `pg`-pool med `attachDatabasePool`
+- **Better Auth** (`lib/auth.ts`) i samme database: e-post/passord + Face ID (passkeys), bare e-poster i `ALLOWED_EMAILS`
+- **Vercel Blob** (privat) for dokumenter — opplasting direkte fra nettleser, visning via `/api/filer/[id]`
+- **Live-synk:** databasetriggere teller opp `sync_state.version`; `components/live-sync.tsx` spør `/api/sync` hvert 5. s mens appen er synlig
 - Anthropic SDK (`lib/anthropic.ts`, Claude Opus 5.5, effort low, server-side fallback) for handleliste-sortering og «Fra tekst»
-- Vercel, region `fra1`, Vercel Cron hver 30. min for kalenderimport
-- met.no for vær (Helsfyr + Hedalen, `lib/config.ts`)
+- Web push (VAPID) via `lib/push.ts`, met.no for vær (Helsfyr + Hedalen, `lib/config.ts`)
+- Vercel-prosjekt `familiesamarbeid` → https://familiesamarbeid.vercel.app
 
 ## Kommandoer
 
 ```bash
-npm run dev        # localhost:3000 (krever .env.local — `vercel env pull .env.local`)
-npm run check      # typecheck + lint + build — må være grønt før commit
-npm run typecheck
-npm run lint
+npm run dev          # localhost:3000 (krever .env.local — `vercel env pull .env.local`)
+npm run check        # typecheck + lint + build — må være grønt før commit
+npm run db:generate  # ny migrasjon fra endringer i lib/db/*-schema.ts
+npm run db:migrate   # kjør migrasjoner (skjer også automatisk i Vercel-builden)
 ```
 
 ## Kodestil og mønstre
 
-- Server Components som standard; `"use client"` bare for interaksjon. Datahenting med `Promise.all`; husstand/personer via `getHousehold()` (`lib/household.ts`, React.cache).
-- **Mutasjoner:** optimistisk lokal state → Supabase-kall fra klienten (RLS er tilgangskontrollen) → `router.refresh()` ved suksess, rollback ved feil.
-- **Live-synk:** `components/realtime-sync.tsx` lytter på husstandens tabeller og kaller `router.refresh()`. Nye tabeller legges inn der og i `supabase_realtime`-publikasjonen.
+- Server Components henter data direkte med Drizzle (`db.select()…`), parallelt med `Promise.all`. Innlogget bruker/familie via `requireUser()` / `getFamily()` i `lib/session.ts` (React.cache).
+- **Mutasjoner = Server Actions** (`app/(app)/<side>/actions.ts`): `requireUser()` først, valider med zod, skriv med Drizzle, `revalidatePath("/", "layout")`. Klienten oppdaterer lokal state optimistisk, kaller actionen og ruller tilbake ved feil.
+- Push-varsler og AI-etterarbeid kjøres i `after()` så de aldri forsinker svaret.
+- **Én familie:** ingen husstand-id. Alle innloggede (bare `ALLOWED_EMAILS`) ser alt. Personer (voksne + barn) ligger i `people`.
 - **Tid:** alt lagres i UTC og vises i Europe/Oslo via `lib/utils.ts` (`osloDateKey`, `osloTime`, `osloToIso`). Aldri enhetens tidssone — de reiser i jobben. Heldagshendelser: `starts_at` = midnatt Oslo, `ends_at` = siste dag (inklusiv) eller null.
-- Native HTML først (`<select>`, `<input type="date">`). Trykkflater ≥ 44 px, input ≥ 16 px, `aria-label` på ikonknapper.
-- Farger via CSS-variabler i `app/globals.css` (lys + mørk modus).
-- Bokmål i all UI-tekst. Små, fokuserte komponenter — ikke abstraher før tredje gang.
+- **UI-mønstre:** grupperte lister i ett kort, rad = stor avkrysning til venstre + trykk på teksten for å redigere i `Sheet` (bunnark), `UndoToast` etter sletting/rydding, chips for raske valg. Trykkflater ≥ 44 px, input ≥ 16 px, `aria-label` på ikonknapper.
+- Farger via CSS-variabler i `app/globals.css` (lys + mørk modus). Bokmål i all UI-tekst.
 - Endre appnavn, værsteder og kategorier i `lib/config.ts`, ikke rundt om i koden.
 
 ## Sikkerhet — ufravikelig
 
 1. Aldri commit hemmeligheter. `.env.local` er gitignored; `.env.example` dokumenterer navnene.
-2. Appen er lukket: `lib/supabase/proxy.ts` sender alt til `/login` unntatt `/login`, `/auth/*`, `/bli-med/*`, `/api/ics/*` (hemmelig token) og `/api/cron/*` (`CRON_SECRET`).
-3. Alle tabeller med `household_id` har RLS med `public.is_household_member(household_id)`. `household_members` skrives kun via SECURITY DEFINER-RPC.
-4. `createAdminClient()` bypasser RLS — bare i server-kode uten innlogget bruker (cron, ICS-feed, push-utsending), alltid med manuelt `household_id`-filter.
-5. Filer ligger i privat bucket `family-files` under `<household_id>/`, åpnes via signerte URL-er.
+2. Appen er lukket: `proxy.ts` sender alle uten sesjons-cookie til `/login` (unntatt `/login` og `/api/auth/*`). Den ekte sjekken er `requireUser()` / `getSession()` i **hver** side, Server Action og API-rute.
+3. Bare e-poster i `ALLOWED_EMAILS` kan lage konto (`databaseHooks` i `lib/auth.ts`).
+4. Filer i Blob er private og åpnes bare via `/api/filer/[id]` (sjekker innlogging, `Cache-Control: private`).
+5. `lib/db`, `lib/auth.ts`, `lib/push.ts` har `import "server-only"` — aldri importer dem i klientkode.
 6. AI-resultat som endrer innhold (f.eks. «Fra tekst») vises alltid for redigering før lagring. Unntak: sortering av handlelista (endrer bare rekkefølge).
 
 ## Database-migrasjoner
 
-`supabase/migrations/NNNN_*.sql` er append-only — en hook stopper redigering av committede migrasjoner. Eieren kjører nye filer i Supabase → SQL Editor. Bruk `/db-migrasjon`. Kjørte migrasjoner listes i `docs/OPPSETT.md`.
+Endre skjemaet i `lib/db/app-schema.ts`, kjør `npm run db:generate`, og commit fila i `drizzle/`. Migrasjoner kjøres automatisk i Vercel-builden (`scripts/migrate.mjs`, upoolet URL) — eieren trenger ikke kjøre SQL. Migrasjonsfiler som er committet er append-only (en hook stopper redigering). Bruk `/db-migrasjon`.
 
 ## Git og levering
 
@@ -73,4 +76,4 @@ npm run lint
 
 ## Opphav
 
-Handlelista er portert fra Hyttekompis (`Django641/hyttekompis`, se `docs/HANDLELISTE.md` der). Avvik: to statuser (må kjøpes/kjøpt) i stedet for tre, og `household_id` i stedet for `cabin_id`.
+Handlelistas funksjoner er portert fra Hyttekompis (`Django641/hyttekompis`, se `docs/HANDLELISTE.md` der): kategorier, butikkgruppering, AI-sortering, auto-innsortering, rydd med angre. Avvik: to statuser (må kjøpes/kjøpt), nytt utseende, og AI-kall på serveren via Server Actions. Resten av appen er bevisst ikke modellert etter Hyttekompis.

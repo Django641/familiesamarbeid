@@ -14,8 +14,9 @@ Du bygger UI for Familiesamarbeid — en mobil-først PWA som brukes med én hå
 
 ## Regler
 
-- **Server Components som standard.** `"use client"` bare der det trengs interaktivitet. Datahenting i `page.tsx` med `Promise.all`; delt kontekst via `getHousehold()` (React.cache).
-- **Mutasjoner:** optimistisk lokal state → Supabase-kall fra klienten (RLS beskytter) → `router.refresh()` ved suksess, rollback + norsk feilmelding ved feil. Se `app/(app)/handleliste/shopping-list.tsx`.
+- **Server Components som standard.** `"use client"` bare der det trengs interaktivitet. Datahenting med Drizzle i `page.tsx` (`Promise.all`); familien via `getFamily()` i `lib/session.ts`.
+- **Mutasjoner:** optimistisk lokal state → Server Action (`actions.ts` ved siden av siden) → rollback + norsk feilmelding ved feil. Actionen kaller `revalidatePath`. Se `app/(app)/gjoremal/task-board.tsx`.
+- **Mønstre:** grupperte lister i ett kort, stor avkrysning til venstre, trykk på raden åpner `Sheet` (bunnark) for redigering, `UndoToast` etter sletting, chips for raske valg, vennlige tomtilstander.
 - **Mobil:** trykkflater min. 44 px, input-tekst min. 16 px (ingen iOS-zoom), native `<select>`/`<input type="date|time">`, ingen hover-avhengighet. Test på 375–390 px bredde.
 - **Tilgjengelighet:** `aria-label` på ikonknapper, synlig fokus, `role="alert"` på feilmeldinger, god kontrast i både lys og mørk modus (CSS-variablene i `app/globals.css`).
 - **Tid og dato:** bruk hjelperne i `lib/utils.ts` (`osloDateKey`, `osloTime`, `osloToIso`) — aldri `new Date().getHours()` eller enhetens tidssone.

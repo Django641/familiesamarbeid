@@ -3,10 +3,9 @@ import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 
 import { TopBar } from "@/components/top-bar";
 import { buttonClass } from "@/components/ui/button";
-import { buildAgenda, overlapFilter, rangeBounds } from "@/lib/events";
-import { getHousehold } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
-import type { CalendarEvent } from "@/lib/types";
+import { buildAgenda } from "@/lib/events";
+import { eventsInRange } from "@/lib/events-db";
+import { getFamily } from "@/lib/session";
 import { addDays, formatDate, osloDateKey } from "@/lib/utils";
 
 import { Agenda } from "./agenda";
@@ -20,26 +19,12 @@ export default async function CalendarPage({
 }: {
   searchParams: Promise<{ fra?: string }>;
 }) {
-  const [{ household, people }, { fra }, supabase] = await Promise.all([
-    getHousehold(),
-    searchParams,
-    createClient(),
-  ]);
+  const [{ people }, { fra }] = await Promise.all([getFamily(), searchParams]);
 
   const todayKey = osloDateKey(new Date());
   const fromKey = fra && /^\d{4}-\d{2}-\d{2}$/.test(fra) ? fra : todayKey;
   const toKey = addDays(fromKey, SPAN_DAYS - 1);
-  const { startIso, endIso } = rangeBounds(fromKey, toKey);
-
-  const { data } = await supabase
-    .from("events")
-    .select("*")
-    .eq("household_id", household.id)
-    .lt("starts_at", endIso)
-    .or(overlapFilter(startIso))
-    .order("starts_at", { ascending: true })
-    .limit(500);
-  const events = (data ?? []) as CalendarEvent[];
+  const events = await eventsInRange(fromKey, toKey);
   const days = buildAgenda(events, fromKey, toKey);
 
   return (

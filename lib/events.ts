@@ -73,8 +73,3 @@ export function buildAgenda(events: CalendarEvent[], fromKey: string, toKey: str
 export function rangeBounds(fromKey: string, toKey: string) {
   return { startIso: osloToIso(fromKey), endIso: osloToIso(addDays(toKey, 1)) };
 }
-
-/** PostgREST-filter: hendelser som overlapper [startIso, endIso). */
-export function overlapFilter(startIso: string) {
-  return `ends_at.gte.${startIso},and(ends_at.is.null,starts_at.gte.${startIso})`;
-}

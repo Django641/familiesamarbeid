@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MapPin, RefreshCw } from "lucide-react";
+import { MapPin } from "lucide-react";
 
 import { PersonDots } from "@/components/person-dots";
 import { categoryMeta } from "@/lib/config";
@@ -74,11 +74,6 @@ export function Agenda({ days, people, todayKey }: { days: AgendaDay[]; people: 
                             <span className="flex min-w-0 items-center gap-0.5">
                               <MapPin className="h-3 w-3 shrink-0" aria-hidden />
                               <span className="truncate">{event.location}</span>
-                            </span>
-                          ) : null}
-                          {event.source === "ics" ? (
-                            <span className="flex items-center gap-0.5">
-                              <RefreshCw className="h-3 w-3" aria-hidden /> importert
                             </span>
                           ) : null}
                         </span>

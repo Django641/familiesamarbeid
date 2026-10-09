@@ -2,6 +2,7 @@
 
 Privat app for familien: felles kalender, handleliste, gjøremål, beskjeder og dokumenter — synket live mellom to telefoner.
 
+- **Appen:** https://familiesamarbeid.vercel.app
 - **Kom i gang (oppsett):** [`docs/OPPSETT.md`](docs/OPPSETT.md)
 - **Status og backlog:** [`docs/STATUS.md`](docs/STATUS.md)
 - **Idéer:** [`docs/IDEER.md`](docs/IDEER.md)
@@ -10,6 +11,6 @@ Privat app for familien: felles kalender, handleliste, gjøremål, beskjeder og 
 
 ```bash
 npm install
-vercel env pull .env.local   # henter Supabase-nøkler m.m. fra Vercel
+vercel env pull .env.local   # henter database-URL, nøkler m.m. fra Vercel
 npm run dev
 ```

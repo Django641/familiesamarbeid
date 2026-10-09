@@ -12,10 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EVENT_CATEGORIES } from "@/lib/config";
-import { type EventDraft, draftToRow } from "@/lib/event-draft";
-import { notifyHousehold } from "@/lib/push-client";
-import { createClient } from "@/lib/supabase/client";
+import { type EventDraft, type EventRowDraft, draftToRow } from "@/lib/event-draft";
 import type { Person } from "@/lib/types";
+
+import { createEvents } from "../actions";
 
 type AiEvent = {
   title: string;
@@ -54,9 +54,9 @@ function toRow(e: AiEvent, people: Person[], i: number): Row {
   };
 }
 
-export function TextImport({ householdId, people }: { householdId: string; people: Person[] }) {
+export function TextImport({ people, initialText = "" }: { people: Person[]; initialText?: string }) {
   const router = useRouter();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,22 +97,19 @@ export function TextImport({ householdId, people }: { householdId: string; peopl
     }
     setBusy(true);
     setError(null);
-    const supabase = createClient();
-    const { error: dbError } = await supabase
-      .from("events")
-      .insert(converted.map((c) => ({ ...(c as { row: Record<string, unknown> }).row, household_id: householdId })));
-    setBusy(false);
-    if (dbError) {
+    try {
+      const res = await createEvents(converted.map((c) => (c as { row: EventRowDraft }).row));
+      if (res.error) {
+        setError(res.error);
+        setBusy(false);
+        return;
+      }
+    } catch {
       setError("Klarte ikke å lagre. Prøv igjen.");
+      setBusy(false);
       return;
     }
-    notifyHousehold(
-      chosen.length === 1 ? `la inn «${chosen[0].title}» i kalenderen` : `la inn ${chosen.length} hendelser i kalenderen`,
-      "/kalender",
-      "calendar"
-    );
     router.push("/kalender");
-    router.refresh();
   }
 
   if (rows && rows.length > 0) {

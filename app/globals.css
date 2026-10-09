@@ -83,3 +83,24 @@
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* Bunnark: glir opp fra bunnen. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog.sheet[open] {
+    animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  dialog.sheet[open]::backdrop {
+    animation: fade-in 220ms ease-out;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

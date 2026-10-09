@@ -1,32 +1,22 @@
-import { TopBar } from "@/components/top-bar";
-import { getHousehold } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
-import type { Message } from "@/lib/types";
+import { desc } from "drizzle-orm";
 
-import { MessageFeed } from "./message-feed";
+import { TopBar } from "@/components/top-bar";
+import { db } from "@/lib/db";
+import { messages } from "@/lib/db/schema";
+import { getFamily } from "@/lib/session";
+
+import { Chat } from "./chat";
 
 export const metadata = { title: "Beskjeder" };
 
 export default async function MessagesPage() {
-  const [{ household, people, userId }, supabase] = await Promise.all([getHousehold(), createClient()]);
-  const { data } = await supabase
-    .from("messages")
-    .select("*")
-    .eq("household_id", household.id)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const { people, userId } = await getFamily();
+  const rows = await db.select().from(messages).orderBy(desc(messages.created_at)).limit(200);
 
   return (
     <>
       <TopBar title="Beskjeder" />
-      <main className="mx-auto max-w-xl px-4 py-4">
-        <MessageFeed
-          householdId={household.id}
-          messages={((data ?? []) as Message[]).reverse()}
-          people={people}
-          userId={userId}
-        />
-      </main>
+      <Chat messages={rows.reverse()} people={people} userId={userId} />
     </>
   );
 }
