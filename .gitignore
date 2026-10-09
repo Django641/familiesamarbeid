@@ -1,0 +1,36 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+
+# misc
+.DS_Store
+*.pem
+/coverage
+
+# debug
+npm-debug.log*
+
+# env files (keep .env.example)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code: personlige innstillinger og agent-minne som ikke skal deles
+.claude/settings.local.json
+.claude/agent-memory-local/
