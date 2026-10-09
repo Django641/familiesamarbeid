@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EVENT_CATEGORIES } from "@/lib/config";
 import { type EventDraft, type EventRowDraft, draftToRow } from "@/lib/event-draft";
-import { prepareUpload } from "@/lib/prepare-upload";
+import { prepareUpload, snapshotFile } from "@/lib/prepare-upload";
 import type { Person } from "@/lib/types";
 
 import { createEvents } from "../actions";
@@ -139,7 +139,17 @@ export function TextImport({
     const names = Array.from(e.clipboardData.files).map((f) => f.name);
     if (text && !names.includes(text) && !text.split(/\r?\n/).every((line) => names.includes(line.trim()))) return;
     e.preventDefault();
-    void analyseFile(file);
+    readNow(file);
+  }
+
+  /** Safari gjør innlimte/sluppede filer uleselige etter hendelsen — les dem med en gang. */
+  function readNow(file: File) {
+    // Sjekk type og størrelse før noe leses inn i minnet (f.eks. en video som slippes på feltet).
+    if (!isReadableFile(file)) return setError("Velg et bilde eller en PDF.");
+    if (file.size > 60 * 1024 * 1024) return setError("Fila er for stor. Ta et skjermbilde i stedet.");
+    snapshotFile(file).then(analyseFile, () =>
+      setError("Fikk ikke lest fila. Lagre den og velg den med bindersen i stedet.")
+    );
   }
 
   /** Dra og slipp en fil (Mac) på feltet. */
@@ -147,7 +157,7 @@ export function TextImport({
     const file = Array.from(e.dataTransfer.files).find(isReadableFile) ?? e.dataTransfer.files[0];
     if (!file) return;
     e.preventDefault();
-    void analyseFile(file);
+    readNow(file);
   }
 
   async function run(init: RequestInit, kind: "tekst" | "fil") {
