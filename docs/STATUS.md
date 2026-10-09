@@ -14,9 +14,11 @@ Se `docs/OPPSETT.md`.
 
 ## 🔎 Venter på verifisering i praksis
 
+Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble riktig), innliming på Mac, tilbakeknapp, kjennetegn, dokumentopplasting.
+
 - [ ] Face ID (passkeys) i appen fra Hjem-skjermen på iPhone
 - [ ] Push-varsler på begge iPhoner
-- [ ] Opplasting av store bilder/PDF-er til Blob fra iPhone
+- [ ] Opplasting av store bilder/PDF-er (> 20 MB) til Blob fra iPhone
 - [ ] «Fra tekst»/hurtigfeltet på ekte meldinger fra Skolemelding/Spond og korte notiser («konsert i morgen kl. 20»)
 - [ ] Bilde/PDF → hendelser på ekte iPhone (HEIC-bilder fra kamera/bilder, PDF fra Filer)
 - [ ] Uker-visningen på ekte iPhone (lesbarhet av stolper/emoji, trykk på dag)
