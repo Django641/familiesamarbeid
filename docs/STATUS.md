@@ -9,6 +9,7 @@ Se `docs/OPPSETT.md`.
 - [x] Neon koblet til (prefiks `DATABASE`), migrasjoner kjørt i produksjon 9. okt
 - [x] `ALLOWED_EMAILS` = Kjetil + Miriam
 - [x] `ANTHROPIC_API_KEY` lagt inn (Production, workspace-nøkkel)
+- [ ] Fyll inn kjennetegn for Ada, Lea og dere selv (Innstillinger → Familien)
 - [ ] Begge lager konto (Miriam via invitasjonslenke fra Innstillinger → Tilgang), legger appen på Hjem-skjermen og slår på Face ID og varsler
 
 ## 🔎 Venter på verifisering i praksis
@@ -26,6 +27,7 @@ Se `docs/OPPSETT.md`.
 - [x] Vercel-prosjekt, Blob-lagring og miljøvariabler satt opp av Claude
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
 - [x] **Kalender pakke 1** (etter agentdrøfting, se `docs/KALENDER.md`): «Uker»-visning med mange uker under hverandre (ukenummer, reiser/ferier som stolper, aktiviteter som emoji, dagsark ved trykk), bryter Uker/Liste i toppfeltet (huskes per telefon), hurtigfelt «Skriv eller lim inn en avtale» øverst i Kalender med AI-forslag som bekreftes før lagring, «＋» per dag i Liste
+- [x] **Kjennetegn per person** (Innstillinger → Familien): f.eks. «født 2017, 4B på Tøyen skole, fotball J2017». Claude bruker dem til å koble beskjeder til riktig person; klassetrinn regnes fra fødselsår så det stemmer neste skoleår. Migrasjon `0002_person_hints` (kjøres automatisk).
 - [x] **Bilde/PDF → kalender:** bildeknapp i hurtigfeltet og på «Fra tekst» — ta bilde av et skriv, velg skjermbilde eller PDF; bildet skaleres ned i nettleseren (maks 2000 px JPEG, også HEIC), PDF maks 4 MB; Claude leser og foreslår hendelser som bekreftes før lagring. Ingenting lagres av fila. AI-feil vises som norske meldinger.
 - [x] **«Fra tekst»:** lim inn melding → AI foreslår hendelser → rediger → lagre. Kan også startes fra en beskjed.
 - [x] **Handleliste:** alle funksjonene fra Hyttekompis (dagligvare/annet, butikkgruppering, AI-sortering, auto-innsortering, rydd med angre) med nytt utseende — trykk på vare for å redigere, angre ved sletting

@@ -18,9 +18,18 @@ function done(): Result {
   return {};
 }
 
-export async function updatePerson(id: string, input: { name?: string; color?: string }): Promise<Result> {
+export async function updatePerson(
+  id: string,
+  input: { name?: string; color?: string; hints?: string }
+): Promise<Result> {
   await requireUser();
-  const parsed = z.object({ name: z.string().trim().min(1).max(40).optional(), color: Color.optional() }).safeParse(input);
+  const parsed = z
+    .object({
+      name: z.string().trim().min(1).max(40).optional(),
+      color: Color.optional(),
+      hints: z.string().trim().max(300).optional(),
+    })
+    .safeParse(input);
   if (!parsed.success) return { error: "Ugyldig endring." };
   await db.update(people).set(parsed.data).where(eq(people.id, z.uuid().parse(id)));
   return done();

@@ -1,0 +1,1 @@
+ALTER TABLE "people" ADD COLUMN "hints" text DEFAULT '' NOT NULL;

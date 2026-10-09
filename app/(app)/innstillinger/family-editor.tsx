@@ -7,14 +7,16 @@ import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Sheet } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { PERSON_COLORS } from "@/lib/config";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { addChild, removeChild, updatePerson } from "./actions";
 
-/** Familiemedlemmer: navn og farge (brukes i kalender og gjøremål). */
+/** Familiemedlemmer: navn, farge og kjennetegn (brukes i kalender, gjøremål og AI-tolkning). */
 export function FamilyEditor({ people, meId }: { people: Person[]; meId: string }) {
   const [editing, setEditing] = useState<Person | null>(null);
   const [newName, setNewName] = useState("");
@@ -44,9 +46,16 @@ export function FamilyEditor({ people, meId }: { people: Person[]; meId: string 
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl px-1 text-left hover:bg-[var(--color-bg)]"
               >
                 <Avatar person={p} />
-                <span className="flex-1 font-medium">
-                  {p.name}
-                  {p.id === meId ? <span className="font-normal text-[var(--color-muted)]"> (deg)</span> : null}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {p.name}
+                    {p.id === meId ? <span className="font-normal text-[var(--color-muted)]"> (deg)</span> : null}
+                  </span>
+                  {p.hints ? (
+                    <span aria-hidden className="block truncate text-xs text-[var(--color-muted)]">
+                      {p.hints}
+                    </span>
+                  ) : null}
                 </span>
                 <span className="text-xs text-[var(--color-muted)]">{p.kind === "barn" ? "Barn" : "Voksen"}</span>
               </button>
@@ -74,19 +83,21 @@ export function FamilyEditor({ people, meId }: { people: Person[]; meId: string 
 function PersonSheet({ person, onClose, onError }: { person: Person | null; onClose: () => void; onError: (e: string) => void }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("");
+  const [hints, setHints] = useState("");
   const [lastId, setLastId] = useState<string | null>(null);
   if (!person && lastId !== null) setLastId(null);
   if (person && person.id !== lastId) {
     setLastId(person.id);
     setName(person.name);
     setColor(person.color);
+    setHints(person.hints);
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!person) return;
     onClose();
-    const res = await updatePerson(person.id, { name: name.trim(), color }).catch(() => ({ error: "Klarte ikke å lagre." }));
+    const res = await updatePerson(person.id, { name: name.trim(), color, hints: hints.trim() }).catch(() => ({ error: "Klarte ikke å lagre." }));
     if (res.error) onError(res.error);
   }
 
@@ -114,6 +125,26 @@ function PersonSheet({ person, onClose, onError }: { person: Person | null; onCl
               style={{ backgroundColor: c.value }}
             />
           ))}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="hints">Kjennetegn</Label>
+          <Textarea
+            id="hints"
+            rows={3}
+            maxLength={300}
+            value={hints}
+            onChange={(e) => setHints(e.target.value)}
+            aria-describedby="hints-help"
+            placeholder={
+              person?.kind === "barn"
+                ? "F.eks. født 2017, 4B på Tøyen skole, AKS, fotball Lille Tøyen J2017"
+                : "F.eks. jobber på …, reiser ofte til Bergen, kor på onsdager"
+            }
+          />
+          <p id="hints-help" className="text-xs text-[var(--color-muted)]">
+            Hjelper Claude å skjønne hvem en beskjed gjelder (klasse, lag, skole, jobb). Fødselsår gjør at klassetrinnet
+            stemmer også neste skoleår.
+          </p>
         </div>
         <Button type="submit" size="lg" disabled={!name.trim()}>
           Lagre

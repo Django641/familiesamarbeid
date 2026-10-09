@@ -36,6 +36,8 @@ export const people = pgTable("people", {
     .unique()
     .references(() => user.id, { onDelete: "set null" }),
   position: integer("position").notNull().default(0),
+  /** Kjennetegn AI-en bruker for å koble meldinger til riktig person (klasse, lag, skole, jobb). */
+  hints: text("hints").notNull().default(""),
   created_at: createdAt(),
 });
 

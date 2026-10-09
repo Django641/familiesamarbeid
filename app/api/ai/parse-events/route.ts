@@ -127,9 +127,11 @@ export async function POST(request: Request) {
   if (typeof input === "string") return NextResponse.json({ error: input }, { status: 400 });
 
   const people = await db
-    .select({ name: peopleTable.name, kind: peopleTable.kind, user_id: peopleTable.user_id })
+    .select({ name: peopleTable.name, kind: peopleTable.kind, user_id: peopleTable.user_id, hints: peopleTable.hints })
     .from(peopleTable);
-  const family = people.map((p) => `${p.name} (${p.kind})`).join(", ") || "ukjent";
+  const family =
+    people.map((p) => `- ${p.name} (${p.kind})${p.hints ? `: ${p.hints.replace(/\s+/g, " ")}` : ""}`).join("\n") ||
+    "ukjent";
   const writer = people.find((p) => p.user_id === session.user.id)?.name;
 
   const today = osloDateKey(new Date());
@@ -138,14 +140,15 @@ export async function POST(request: Request) {
   const system = `Du hjelper en norsk familie med å legge hendelser i en delt kalender. Du får en tekst (melding fra Spond, Skolemelding, e-post, SMS e.l.) og skal hente ut alle konkrete hendelser med dato.
 
 I dag er ${weekday} ${today} (Europe/Oslo). Relative datoer («på tirsdag», «neste uke», «14.10.») tolkes ut fra dette, alltid fremover i tid.
-Familien: ${family}.${writer ? `\nDen som skriver er ${writer}: «jeg», «meg» og «min» betyr ${writer}.` : ""}
+Familien (med kjennetegn de voksne har skrevet):
+${family}${writer ? `\nDen som skriver er ${writer}: «jeg», «meg» og «min» betyr ${writer}.` : ""}
 
 Du kan få et bilde (skjermbilde fra Spond/Skolemelding/e-post, foto av et skriv eller en invitasjon) eller en PDF i stedet for tekst — les da innholdet og bruk samme regler. Teksten kan være en lang melding med flere datoer, eller en kort notis skrevet av en av de voksne («konsert i morgen kl. 20», «Lea tannlege tir 14:30», «jobbreise Bergen 3.–5. nov»). En kort notis blir én hendelse.
 
 Regler:
 - Ta bare med hendelser som har en dato. Ikke finn på noe.
 - Kategorier: avtale, reise, jobb, skole (skole/barnehage/SFO/foreldremøter), aktivitet (fotball, trening, kamper, cuper), bursdag, annet.
-- «people»: bruk bare navn fra familielista. Gjelder det et barn (f.eks. klassen eller laget hennes), velg barnet.
+- «people»: bruk bare navn fra familielista. Bruk kjennetegnene til å koble meldingen til riktig person: klasse/trinn, skole, lag, aktivitet, arbeidsplass. En melding til «4. trinn» eller «4B» gjelder barnet som går der. Klassetrinn regnes ut fra fødselsår: trinn = startåret for skoleåret − fødselsår − 5 (skoleåret starter i august; født 2017 → 4. trinn i skoleåret 2026/27). Står både fødselsår og en klasse i kjennetegnene, gjelder fødselsåret for trinnet (klassen kan være fra i fjor), mens bokstaven (f.eks. «B» i 4B) fortsatt gjelder. Er det uklart hvem det gjelder, la «people» stå tom heller enn å gjette.
 - Frister («svar innen», «betal innen») blir egne heldagshendelser med tittel som starter med «Frist:».
 - Tittelen skal være kort og forståelig uten resten av meldingen.
 - Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.`;
