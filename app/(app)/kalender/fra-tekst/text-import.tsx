@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Check, ClipboardPaste, ImagePlus, Loader2, Sparkles } from "lucide-react";
+import { Check, ClipboardPaste, Loader2, Paperclip, Sparkles } from "lucide-react";
 
 import { PersonPicker } from "@/components/person-picker";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,11 @@ function toRow(e: AiEvent, people: Person[], i: number): Row {
     description: e.notes,
     personIds: people.filter((p) => names.includes(p.name.toLowerCase())).map((p) => p.id),
   };
+}
+
+/** Bilder og PDF-er kan tolkes (Finder kan gi tom MIME-type, så sjekk også filendelsen). */
+function isReadableFile(f: File) {
+  return f.type.startsWith("image/") || f.type === "application/pdf" || /\.(pdf|heic|heif|jpe?g|png|webp)$/i.test(f.name);
 }
 
 /**
@@ -126,19 +131,20 @@ export function TextImport({
 
   /** ⌘V / lim inn rett i feltet: et rent bilde (f.eks. skjermbilde på Mac) går til bildetolkning. */
   function onPaste(e: React.ClipboardEvent) {
-    // Finnes det tekst, limes den inn som normalt (Outlook/Word legger også ved et bilde).
-    if (e.clipboardData.getData("text/plain").trim()) return;
-    const file = Array.from(e.clipboardData.files).find(
-      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
-    );
-    if (!file) return;
+    const file = Array.from(e.clipboardData.files).find(isReadableFile);
+    if (!file) return; // vanlig tekst limes inn som normalt
+    // Outlook/Word legger ved et bilde av teksten — da er det teksten som gjelder.
+    // Finder (⌘C på en fil) legger derimot bare ved filnavnet som tekst — da gjelder fila.
+    const text = e.clipboardData.getData("text/plain").trim();
+    const names = Array.from(e.clipboardData.files).map((f) => f.name);
+    if (text && !names.includes(text) && !text.split(/\r?\n/).every((line) => names.includes(line.trim()))) return;
     e.preventDefault();
     void analyseFile(file);
   }
 
   /** Dra og slipp en fil (Mac) på feltet. */
   function onDrop(e: React.DragEvent) {
-    const file = e.dataTransfer.files[0];
+    const file = Array.from(e.dataTransfer.files).find(isReadableFile) ?? e.dataTransfer.files[0];
     if (!file) return;
     e.preventDefault();
     void analyseFile(file);
@@ -213,10 +219,10 @@ export function TextImport({
         className={inline ? "h-12 w-12 shrink-0" : undefined}
         onClick={() => fileInput.current?.click()}
         disabled={busy}
-        aria-label={inline ? "Les fra bilde eller PDF" : undefined}
+        aria-label={inline ? "Legg ved bilde eller PDF" : undefined}
       >
-        <ImagePlus className="h-5 w-5" aria-hidden />
-        {inline ? null : "Les fra bilde eller PDF"}
+        <Paperclip className="h-5 w-5" aria-hidden />
+        {inline ? null : "Legg ved bilde eller PDF"}
       </Button>
     </>
   );
