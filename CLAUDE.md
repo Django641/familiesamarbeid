@@ -17,6 +17,8 @@ Hovedøkta er **prosjektleder** (se `.claude/agents/prosjektleder.md`; kan også
 | `integrasjoner` | Sonnet 5.5 | AI-ruter, push, Blob-filer, vær, senere ICS/Spond |
 | `kvalitetskontroll` | Opus 5.5 | Uavhengig review før merge (bare lesetilgang) |
 | `produktutvikler` | Opus 5.5 | Frie forslag eieren ikke har bedt om → `docs/IDEER.md` |
+| `ux-designer` | Opus 5.5 | Visninger, flyt og skisser før noe bygges (bare lesetilgang) |
+| `brukerstemme` | Sonnet 5.5 | Tester forslag mot familiens hverdag — «ville vi brukt dette?» |
 | `utforsker` | Haiku 5.5 | Raske søk i kodebasen |
 
 Begrunnelse og når man bør overstyre modell: `docs/AGENTER.md`. Forslag fra `produktutvikler` bygges ikke uten eierens ja.

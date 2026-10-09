@@ -64,7 +64,8 @@ Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 
 ### P1
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
-- [ ] Ukevisning (7 kolonner) som alternativ til agenda
+- [ ] **Kalenderen: Pakke 1** (Uker-visning, dagsark, bryter Uker/Liste, «Hvem kjører?») — plan i `docs/KALENDER.md`, venter på eierens ja
+- [ ] Kalenderen: Pakke 2 og 3 — se `docs/KALENDER.md`
 - [ ] Angre ved sletting av hendelse
 - [ ] Varsel kvelden før/morgenen samme dag for hendelser (push via cron)
 

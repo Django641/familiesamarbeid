@@ -8,6 +8,8 @@ Oppsettet følger Claude Code-praksis per oktober 2026: én hovedøkt som orkest
 |---|---|---|---|---|
 | **prosjektleder** (hovedøkta) | Opus 5.5 / high | alle | prosjekt | Planlegging, prioritering og helhetsvurderinger tjener mest på den sterkeste modellen. |
 | **produktutvikler** | Opus 5.5 / high | les + nett + `docs/IDEER.md` | prosjekt | Åpen, uklar idéutvikling — her betaler dybde og dømmekraft seg. Får frihet til å foreslå ting eieren ikke har bedt om. |
+| **ux-designer** | Opus 5.5 / high | les + nett | prosjekt | Visninger og interaksjon (f.eks. kalenderen) er avveininger med mange hensyn; dømmekraft lønner seg før det bygges. |
+| **brukerstemme** | Sonnet 5.5 / medium | bare lesing | prosjekt | Spiller familiens hverdag mot forslag. Krever lite resonnement, men skal kjøres ofte — Sonnet er nok. |
 | **database** | Opus 5.5 / high | les/skriv/Bash | – | Skjema, migrasjoner og innlogging er sikkerhetskritiske og vanskelige å reversere. |
 | **kvalitetskontroll** | Opus 5.5 / high | bare lesing + Bash | prosjekt | Skal finne feil andre har oversett; billigere å fange dem her enn i produksjon. |
 | **frontend** | Sonnet 5.5 / medium | les/skriv/Bash | – | Godt spesifisert UI-arbeid i stort volum; Sonnet er rask og sterk nok, til halv pris av Opus. |
@@ -15,6 +17,10 @@ Oppsettet følger Claude Code-praksis per oktober 2026: én hovedøkt som orkest
 | **utforsker** | Haiku 5.5 / low | bare lesing | – | Søk i kodebasen — mekanisk, og Haiku er raskest og billigst. |
 
 Prinsippet (Anthropic, «Choosing a Claude model and effort level», juli 2026): mindre modell for rutinepregede og presist beskrevne oppgaver, større modell for vanskelige feil, ukjente domener og arkitektur. Behold standard effort for det meste.
+
+## Drøftinger mellom agenter
+
+For større spørsmål (f.eks. «hva bør kalenderen kunne?») kjører prosjektlederen en drøfting: runde 1 der `produktutvikler`, `ux-designer`, `brukerstemme` og en utvikler (`frontend`/`database`) svarer hver for seg, runde 2 der alle leser sammendraget og tar stilling til uenighetene, og til slutt en anbefaling til eieren med pakker. Agentene snakker ikke direkte med hverandre; prosjektlederen samler og videresender.
 
 ## Overstyre modell
 
