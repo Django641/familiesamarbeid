@@ -14,7 +14,9 @@ const globalForDb = globalThis as unknown as { pool?: Pool };
 const pool =
   globalForDb.pool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    // Neon gir «sslmode=require», som pg allerede behandler som verify-full — men med en
+    // advarsel i hver logglinje. Å si verify-full eksplisitt gir samme sikkerhet uten støy.
+    connectionString: process.env.DATABASE_URL?.replace("sslmode=require", "sslmode=verify-full"),
     max: 5,
     idleTimeoutMillis: 10_000,
   });

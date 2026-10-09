@@ -11,7 +11,7 @@ if (!url) {
   process.exit(0);
 }
 
-const client = new pg.Client({ connectionString: url });
+const client = new pg.Client({ connectionString: url.replace("sslmode=require", "sslmode=verify-full") });
 await client.connect();
 try {
   await migrate(drizzle({ client }), { migrationsFolder: "./drizzle" });

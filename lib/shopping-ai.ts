@@ -113,7 +113,7 @@ export async function placeGrocery(itemId: string): Promise<void> {
     system: PLACE_SYSTEM,
     user: `Sortert handleliste:\n\n${sorted.map((s, i) => `${i + 1}. ${s.name}`).join("\n")}\n\nNy vare: ${item.name}`,
     schema: PLACE_SCHEMA,
-    maxTokens: 1000,
+    maxTokens: 4000, // tenkingen teller mot taket
   });
   const parsed = z.object({ place_after: z.number().int() }).safeParse(raw);
   if (!parsed.success) return;

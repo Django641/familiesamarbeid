@@ -157,7 +157,7 @@ export function TextImport({
     setSaved(null);
     try {
       const res = await fetch("/api/ai/parse-events", { method: "POST", ...init });
-      const data = (await res.json().catch(() => ({}))) as { events?: AiEvent[]; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { events?: AiEvent[]; error?: string; explanation?: string };
       if (!res.ok || !data.events) {
         const fallback =
           res.status === 413
@@ -168,7 +168,8 @@ export function TextImport({
         throw new Error(data.error ?? fallback);
       }
       if (data.events.length === 0) {
-        setError(kind === "fil" ? "Fant ingen hendelser med dato i fila." : "Fant ingen hendelser med dato i teksten.");
+        const fallback = kind === "fil" ? "Fant ingen hendelser med dato i fila." : "Fant ingen hendelser med dato i teksten.";
+        setError(data.explanation ? `${fallback} ${data.explanation}` : fallback);
       }
       setRows(data.events.map((e, i) => toRow(e, people, i)));
     } catch (e) {

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { type AiAttachment, isAiConfigured, structuredCall, userContent } from "@/lib/anthropic";
+import { type AiAttachment, type AiCallMeta, isAiConfigured, structuredCall, userContent } from "@/lib/anthropic";
 import { EVENT_CATEGORIES } from "@/lib/config";
 import { db } from "@/lib/db";
 import { people as peopleTable } from "@/lib/db/schema";
@@ -28,11 +28,15 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as co
 type ImageType = (typeof IMAGE_TYPES)[number];
 
 /** Leser forespørselen: tekst, eller fil (+ ev. tekst). Returnerer feilmelding som streng. */
-async function readInput(request: Request): Promise<{ text: string; attachments: AiAttachment[] } | string> {
+type Input = { text: string; attachments: AiAttachment[]; log: { kind: string; bytes: number; mediaType?: string } };
+
+async function readInput(request: Request): Promise<Input | string> {
   const type = request.headers.get("content-type") ?? "";
   if (!type.startsWith("multipart/form-data")) {
     const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
-    return parsed.success ? { text: parsed.data.text, attachments: [] } : "Lim inn litt tekst først.";
+    return parsed.success
+      ? { text: parsed.data.text, attachments: [], log: { kind: "tekst", bytes: parsed.data.text.length } }
+      : "Lim inn litt tekst først.";
   }
 
   const form = await request.formData().catch(() => null);
@@ -52,6 +56,7 @@ async function readInput(request: Request): Promise<{ text: string; attachments:
   return {
     text: `Hent ut hendelsene fra ${attachment.kind === "pdf" ? "dokumentet" : "bildet"} over.${extra}`,
     attachments: [attachment],
+    log: { kind: attachment.kind, bytes: file.size, mediaType: file.type },
   };
 }
 
@@ -67,13 +72,18 @@ const DraftSchema = z.object({
   people: z.array(z.string()),
   notes: z.string(),
 });
-const AiResponseSchema = z.object({ events: z.array(DraftSchema) });
+const AiResponseSchema = z.object({ events: z.array(DraftSchema), explanation: z.string() });
 
 const OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["events"],
+  required: ["events", "explanation"],
   properties: {
+    explanation: {
+      type: "string",
+      description:
+        "Tom streng hvis du fant hendelser. Fant du ingen: én kort setning på norsk til brukeren om hvorfor (f.eks. «Bildet viser ingen datoer» eller «Teksten er uleselig»).",
+    },
     events: {
       type: "array",
       items: {
@@ -151,19 +161,32 @@ Regler:
 - «people»: bruk bare navn fra familielista. Bruk kjennetegnene til å koble meldingen til riktig person: klasse/trinn, skole, lag, aktivitet, arbeidsplass. En melding til «4. trinn» eller «4B» gjelder barnet som går der. Klassetrinn regnes ut fra fødselsår: trinn = startåret for skoleåret − fødselsår − 5 (skoleåret starter i august; født 2017 → 4. trinn i skoleåret 2026/27). Står både fødselsår og en klasse i kjennetegnene, gjelder fødselsåret for trinnet (klassen kan være fra i fjor), mens bokstaven (f.eks. «B» i 4B) fortsatt gjelder. Er det uklart hvem det gjelder, la «people» stå tom heller enn å gjette.
 - Frister («svar innen», «betal innen») blir egne heldagshendelser med tittel som starter med «Frist:».
 - Tittelen skal være kort og forståelig uten resten av meldingen.
-- Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.`;
+- Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.
+- Bookingbekreftelser og skjermbilder fra nettsider/apper (fly, tog, buss, hotell, billetter, timebestillinger) er hendelser. Ignorer knapper og menyer («Add to calendar», «Cancel» o.l.). Flyreise tur/retur eller med flere etapper: lag ÉN reise-hendelse fra første avgang (dato + tid) til siste ankomst (end_date + end_time), tittel = reisemålet (f.eks. «Stavanger»), og skriv etappene i notatet (flynummer, avgang–ankomst, bookingreferanse). Enveisreise blir én hendelse med avgang og ankomst.
+- Tekst på engelsk eller andre språk tolkes på samme måte; titler og notater skrives på norsk.`;
 
+  let meta: AiCallMeta | null = null;
   try {
     const raw = await structuredCall({
       system,
       user: userContent(input.text, input.attachments),
       schema: OUTPUT_SCHEMA,
+      effort: input.attachments.length > 0 ? "medium" : "low",
+      onMeta: (m) => (meta = m),
     });
     const parsed = AiResponseSchema.safeParse(raw);
+    // Bare metadata i loggen — aldri innholdet i meldinger eller filer.
+    console.info(
+      "parse-events",
+      JSON.stringify({ ...input.log, ...(meta ?? {}), events: parsed.success ? parsed.data.events.length : null })
+    );
     if (!parsed.success) {
       return NextResponse.json({ error: "Klarte ikke å tolke innholdet. Prøv igjen." }, { status: 502 });
     }
-    return NextResponse.json({ events: parsed.data.events.slice(0, 30) });
+    return NextResponse.json({
+      events: parsed.data.events.slice(0, 30),
+      explanation: parsed.data.explanation.trim().slice(0, 300),
+    });
   } catch (error) {
     // Detaljene logges på serveren; brukeren får en forståelig norsk melding.
     console.error("parse-events: AI-kallet feilet", error);

@@ -37,31 +37,50 @@ export function userContent(text: string, attachments: AiAttachment[] = []): str
   return blocks;
 }
 
+/** Metadata om et kall — til logging (aldri innholdet). */
+export type AiCallMeta = {
+  stopReason: string | null;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+};
+
 /**
  * Ett strukturert kall: systemprompt + brukermelding inn, JSON etter `schema` ut.
  * Returnerer null ved avslag, tomt svar eller ugyldig JSON.
+ * `effort` er «low» som standard; bilder/PDF tjener på «medium».
  */
 export async function structuredCall(opts: {
   system: string;
   user: string | BetaContentBlockParam[];
   schema: Record<string, unknown>;
   maxTokens?: number;
+  effort?: "low" | "medium" | "high";
+  onMeta?: (meta: AiCallMeta) => void;
 }): Promise<unknown | null> {
   const anthropic = createAnthropicClient();
   const response = await anthropic.beta.messages.create({
     model: AI_MODEL,
-    max_tokens: opts.maxTokens ?? 4000,
+    // Tenkingen teller mot max_tokens, så gi god margin (svarene selv er små).
+    max_tokens: opts.maxTokens ?? 16000,
     betas: AI_BETAS,
     fallbacks: "default",
     output_config: {
-      effort: "low",
+      effort: opts.effort ?? "low",
       format: { type: "json_schema", schema: opts.schema },
     },
     system: opts.system,
     messages: [{ role: "user", content: opts.user }],
   });
 
-  if (response.stop_reason === "refusal") return null;
+  opts.onMeta?.({
+    stopReason: response.stop_reason ?? null,
+    model: response.model,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  });
+
+  if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") return null;
   for (const block of response.content) {
     if (block.type === "text") {
       try {
