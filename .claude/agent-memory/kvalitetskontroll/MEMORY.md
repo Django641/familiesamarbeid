@@ -13,3 +13,8 @@
 - Oslo-datofunksjoner (`osloDateKey` = toLocaleDateString uten cachet formatter) kalt i nøstede løkker (uker x hendelser) blir tregt på mobil. Forhåndsberegn per hendelse.
 - fetch mot egne API-ruter: Vercel svarer 413/504 med ikke-JSON -> `res.json()` kaster -> generisk «Noe gikk galt». Sjekk at status (spesielt 504 ved maxDuration) mappes til forståelig melding.
 - Asynkront forarbeid (bildekonvertering o.l.) FØR `setBusy(true)` -> knapper er aktive i mellomtiden -> to parallelle kall, siste svar vinner.
+- Tester (node:test + Playwright): `after(() => { assert…; await browser.close() })` — feiler assert, lukkes ikke nettleseren og testprosessen HENGER (bekreftet). Krev try/finally. Sjekk også at e2e-skriptet har totaltimeout.
+- Regresjonstester for nettleserfeil som er Safari-spesifikke må teste selve fiksen (f.eks. «bildet sendes uendret, ingen canvas»), ikke bare symptomet — Chromium viser aldri symptomet.
+- Testdatoer med `Date.now() + n*86_400_000` blir feil rundt sommertid-skiftet (25-timers døgn). Bruk datostreng + addDays.
+- Fixtures: se etter ekte opplysninger om barna (skole, klasse, lag, fødselsår).
+- Falske tjenester (Blob/Claude) bør registrere sikkerhetskritiske felt (access: private) så testen kan sjekke dem.
