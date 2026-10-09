@@ -20,7 +20,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <TopBar title="Rediger hendelse" />
+      <TopBar title="Rediger hendelse" back="/kalender" />
       <main className="mx-auto max-w-xl px-4 py-4">
         <EventForm people={people} initial={draftFromEvent(event)} event={event} />
       </main>

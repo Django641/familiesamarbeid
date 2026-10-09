@@ -27,7 +27,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <TopBar title="Innstillinger" />
+      <TopBar title="Innstillinger" back="/hjem" />
       <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-4">
         <FamilyEditor people={people} meId={me.id} />
         <PasskeyCard />

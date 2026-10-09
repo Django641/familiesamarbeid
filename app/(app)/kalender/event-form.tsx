@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
+import { useGoBack } from "@/components/back-button";
 import { PersonPicker } from "@/components/person-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function EventForm({
   event?: CalendarEvent;
 }) {
   const router = useRouter();
+  const goBack = useGoBack("/kalender");
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [repeat, setRepeat] = useState<Repeat>("none");
   const [repeatUntil, setRepeatUntil] = useState(addDays(initial.date, 7 * 10));
@@ -205,6 +207,14 @@ export function EventForm({
 
       <Button type="submit" size="lg" disabled={busy}>
         {busy ? "Lagrer …" : event ? "Lagre endringer" : "Legg i kalenderen"}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={busy}
+        onClick={goBack}
+      >
+        Avbryt
       </Button>
 
       {event ? (

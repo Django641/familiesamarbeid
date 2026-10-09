@@ -9,7 +9,7 @@ export default async function FromTextPage({ searchParams }: { searchParams: Pro
   const [{ people }, { tekst }] = await Promise.all([getFamily(), searchParams]);
   return (
     <>
-      <TopBar title="Fra tekst" />
+      <TopBar title="Fra tekst" back="/kalender" />
       <main className="mx-auto max-w-xl px-4 py-4">
         <p className="mb-3 text-sm text-[var(--color-muted)]">
           Lim inn en melding fra Spond, Skolemelding, e-post eller SMS — eller velg et bilde eller en PDF. AI-en

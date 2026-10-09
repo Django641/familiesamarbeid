@@ -1,3 +1,4 @@
+import { NavTracker } from "@/components/back-button";
 import { LiveSync } from "@/components/live-sync";
 import { MobileNav } from "@/components/mobile-nav";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
@@ -9,6 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-dvh pb-24">
       <ServiceWorkerRegister />
       <LiveSync />
+      <NavTracker />
       {children}
       <MobileNav />
     </div>

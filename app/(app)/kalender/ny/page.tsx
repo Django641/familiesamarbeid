@@ -12,7 +12,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
   const date = dato && /^\d{4}-\d{2}-\d{2}$/.test(dato) ? dato : undefined;
   return (
     <>
-      <TopBar title="Ny hendelse" />
+      <TopBar title="Ny hendelse" back="/kalender" />
       <main className="mx-auto max-w-xl px-4 py-4">
         <EventForm people={people} initial={emptyDraft(date)} />
       </main>

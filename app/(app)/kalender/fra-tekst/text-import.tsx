@@ -89,13 +89,59 @@ export function TextImport({
     };
   }, []);
 
+  /** Lim inn-knappen: tekst eller bilde fra utklippstavla (Safari viser en «Lim inn»-boble først). */
   async function paste() {
+    setError(null);
     try {
-      const clip = (await navigator.clipboard.readText()).trim();
-      if (clip) setText((prev) => (prev.trim() ? `${prev.trim()}\n${clip}` : clip).slice(0, 8000));
+      if (typeof navigator.clipboard.read === "function") {
+        // Tekst først: Outlook/Word på Mac legger også et bilde av teksten på utklippstavla.
+        const items = await navigator.clipboard.read();
+        const textItem = items.find((i) => i.types.includes("text/plain"));
+        const clipText = textItem ? (await (await textItem.getType("text/plain")).text()).trim() : "";
+        if (clipText) {
+          addText(clipText);
+          return;
+        }
+        for (const item of items) {
+          const imageType = item.types.find((t) => t.startsWith("image/"));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            await analyseFile(new File([blob], "utklipp", { type: imageType }));
+            return;
+          }
+        }
+        setError("Fant ingen tekst eller bilde på utklippstavla.");
+        return;
+      }
+      addText(await navigator.clipboard.readText());
     } catch {
-      setError("Fikk ikke lest utklippstavla. Hold fingeren i feltet og velg «Lim inn».");
+      setError("Fikk ikke lest utklippstavla. Lim inn rett i feltet med ⌘V (Mac) eller hold fingeren i feltet (iPhone).");
     }
+  }
+
+  function addText(clip: string) {
+    const trimmed = clip.trim();
+    if (trimmed) setText((prev) => (prev.trim() ? `${prev.trim()}\n${trimmed}` : trimmed).slice(0, 8000));
+  }
+
+  /** ⌘V / lim inn rett i feltet: et rent bilde (f.eks. skjermbilde på Mac) går til bildetolkning. */
+  function onPaste(e: React.ClipboardEvent) {
+    // Finnes det tekst, limes den inn som normalt (Outlook/Word legger også ved et bilde).
+    if (e.clipboardData.getData("text/plain").trim()) return;
+    const file = Array.from(e.clipboardData.files).find(
+      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
+    );
+    if (!file) return;
+    e.preventDefault();
+    void analyseFile(file);
+  }
+
+  /** Dra og slipp en fil (Mac) på feltet. */
+  function onDrop(e: React.DragEvent) {
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    e.preventDefault();
+    void analyseFile(file);
   }
 
   async function run(init: RequestInit, kind: "tekst" | "fil") {
@@ -301,6 +347,9 @@ export function TextImport({
           </Label>
           <Textarea
             id="hurtig"
+            onPaste={onPaste}
+            onDrop={onDrop}
+            onDragOver={(e) => e.preventDefault()}
             rows={long ? 5 : 1}
             className="min-h-12 flex-1 resize-none py-2.5"
             value={text}
@@ -350,6 +399,9 @@ export function TextImport({
       </Label>
       <Textarea
         id="paste"
+        onPaste={onPaste}
+        onDrop={onDrop}
+        onDragOver={(e) => e.preventDefault()}
         rows={10}
         value={text}
         onChange={(e) => setText(e.target.value)}
