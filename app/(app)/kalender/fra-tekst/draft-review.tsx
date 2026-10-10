@@ -87,7 +87,6 @@ export function DraftReview({
               label="Gjelder"
             />
             <RepeatPicker
-              id={`repeat-${r.key}`}
               draft={r}
               repeat={r.repeat}
               until={r.repeatUntil}

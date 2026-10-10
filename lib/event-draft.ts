@@ -108,6 +108,7 @@ export const MAX_REPEATS = 60;
 
 /** Forslag til «til og med»: skoleslutt før sommer (19. juni) eller jul (19. des.), minst fire uker fram. */
 export function defaultRepeatUntil(date: string): string {
+  if (!date) return "";
   const year = Number(date.slice(0, 4));
   const earliest = addDays(date, 28);
   return [`${year}-06-19`, `${year}-12-19`, `${year + 1}-06-19`].find((d) => d >= earliest) ?? addDays(date, 70);
@@ -115,7 +116,7 @@ export function defaultRepeatUntil(date: string): string {
 
 /** Datoene i serien (første dato først, maks MAX_REPEATS). Uten gjentakelse: bare startdatoen. */
 export function repeatDates(date: string, repeat: Repeat, until: string): string[] {
-  if (repeat === "none" || !until || until <= date) return [date];
+  if (repeat === "none" || !date || !until || until <= date) return [date];
   const step = repeat === "weekly" ? 7 : 14;
   const dates: string[] = [];
   for (let d = date; d <= until && dates.length < MAX_REPEATS; d = addDays(d, step)) dates.push(d);
@@ -129,6 +130,8 @@ export function expandRepeat(
   until: string,
   seriesId: string
 ): { rows: EventRowDraft[] } | { error: string } {
+  // addDays kaster på tom dato (iPhone «Nullstill», AI-forslag uten gyldig dato).
+  if (!d.date) return { error: "Velg en dato." };
   const dates = repeatDates(d.date, repeat, until);
   const step = repeat === "biweekly" ? 14 : 7;
   const rows: EventRowDraft[] = [];

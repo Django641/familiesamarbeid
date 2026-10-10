@@ -72,6 +72,7 @@ const DraftSchema = z.object({
   people: z.array(z.string()),
   notes: z.string(),
   repeat: z.enum(["none", "weekly", "biweekly"]).catch("none"),
+  repeat_until: z.string().catch(""),
 });
 const AiResponseSchema = z.object({ events: z.array(DraftSchema), explanation: z.string() });
 
@@ -102,6 +103,7 @@ const OUTPUT_SCHEMA = {
           "people",
           "notes",
           "repeat",
+          "repeat_until",
         ],
         properties: {
           title: { type: "string", description: "Kort tittel på norsk, f.eks. «Foreldremøte 3B»" },
@@ -122,6 +124,10 @@ const OUTPUT_SCHEMA = {
             type: "string",
             enum: ["none", "weekly", "biweekly"],
             description: "«weekly»/«biweekly» bare når teksten sier at det gjentas fast hver/annenhver uke, ellers «none»",
+          },
+          repeat_until: {
+            type: "string",
+            description: "Siste dato for gjentakelsen YYYY-MM-DD hvis teksten sier det («til jul», «ut mars»), ellers tom streng",
           },
         },
       },
@@ -168,7 +174,7 @@ Regler:
 - «people»: bruk bare navn fra familielista. Bruk kjennetegnene til å koble meldingen til riktig person: klasse/trinn, skole, lag, aktivitet, arbeidsplass. En melding til «4. trinn» eller «4B» gjelder barnet som går der. Klassetrinn regnes ut fra fødselsår: trinn = startåret for skoleåret − fødselsår − 5 (skoleåret starter i august; født 2017 → 4. trinn i skoleåret 2026/27). Står både fødselsår og en klasse i kjennetegnene, gjelder fødselsåret for trinnet (klassen kan være fra i fjor), mens bokstaven (f.eks. «B» i 4B) fortsatt gjelder. Er det uklart hvem det gjelder, la «people» stå tom heller enn å gjette.
 - Frister («svar innen», «betal innen») blir egne heldagshendelser med tittel som starter med «Frist:».
 - Tittelen skal være kort og forståelig uten resten av meldingen.
-- Faste ting som gjentas hver uke uten oppgitt sluttdato («fotballtrening hver tirsdag 17:30», «svømming annenhver torsdag»): ÉN hendelse på første kommende dato, med repeat = «weekly» eller «biweekly». Ikke lag én hendelse per uke. Står datoene oppramset (f.eks. en terminliste), blir hver dato en egen hendelse med repeat = «none».
+- Faste ting som gjentas hver uke («fotballtrening hver tirsdag 17:30», «svømming annenhver torsdag til 12. mars»): ÉN hendelse på første kommende dato, med repeat = «weekly» eller «biweekly», og repeat_until = siste dato hvis den er oppgitt (ellers tom streng). Ikke lag én hendelse per uke. Står datoene oppramset (f.eks. en terminliste), blir hver dato en egen hendelse med repeat = «none».
 - Reiser og jobbreiser over flere dager: én hendelse med date = første dag og end_date = siste dag.
 - Bookingbekreftelser og skjermbilder fra nettsider/apper (fly, tog, buss, hotell, billetter, timebestillinger) er hendelser. Ignorer knapper og menyer («Add to calendar», «Cancel» o.l.). Flyreise tur/retur eller med flere etapper: lag ÉN reise-hendelse fra første avgang (dato + tid) til siste ankomst (end_date + end_time), tittel = reisemålet (f.eks. «Stavanger»), og skriv etappene i notatet (flynummer, avgang–ankomst, bookingreferanse). Enveisreise blir én hendelse med avgang og ankomst.
 - Tekst på engelsk eller andre språk tolkes på samme måte; titler og notater skrives på norsk.`;

@@ -164,7 +164,6 @@ export function EventForm({
         </p>
       ) : (
         <RepeatPicker
-          id="repeat"
           draft={draft}
           repeat={repeat}
           until={repeatUntil}

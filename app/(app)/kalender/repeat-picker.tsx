@@ -1,6 +1,7 @@
 "use client";
 
 import { Repeat as RepeatIcon } from "lucide-react";
+import { useId } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,18 +15,17 @@ const OPTIONS = [
 
 /** Avkrysning «Gjentas hver uke» + hyppighet og «til og med». Brukes i skjemaet og på AI-forslagene. */
 export function RepeatPicker({
-  id,
   draft,
   repeat,
   until,
   onChange,
 }: {
-  id: string;
   draft: Pick<EventDraft, "date" | "allDay" | "startTime">;
   repeat: Repeat;
   until: string;
   onChange: (repeat: Repeat, until: string) => void;
 }) {
+  const id = useId();
   const on = repeat !== "none";
   return (
     <div className="flex flex-col gap-3">

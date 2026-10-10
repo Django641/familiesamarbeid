@@ -72,6 +72,20 @@ describe("toRow: repeat", () => {
   });
 });
 
+describe("toRow: repeat_until", () => {
+  const rep = { ...base, date: "2026-10-20", repeat: "weekly" };
+
+  test("gyldig dato etter startdatoen brukes", () => {
+    assert.equal(toRow({ ...rep, repeat_until: "2026-12-01" }, [], 0).repeatUntil, "2026-12-01");
+  });
+
+  test("tom, ugyldig, lik eller før startdatoen gir standardforslaget", () => {
+    for (const repeat_until of [undefined, "", "til jul", "2026-12-1", "2026-10-20", "2026-09-01"]) {
+      assert.equal(toRow({ ...rep, repeat_until }, [], 0).repeatUntil, "2026-12-19", String(repeat_until));
+    }
+  });
+});
+
 describe("isReadableFile", () => {
   const file = (name: string, type: string) => new File([""], name, { type });
 

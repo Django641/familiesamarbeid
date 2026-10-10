@@ -225,3 +225,61 @@ test("hurtigfeltet: ukjent repeat-verdi fra Claude behandles som ingen gjentakel
   await page.getByRole("status").filter({ hasText: "«G-AI-Ukjent» er lagt i kalenderen" }).waitFor();
   assert.equal((await rowsFor("G-AI-Ukjent")).length, 1);
 });
+
+test("redigering av hendelse som alt er i en serie: serien er uendret, og avkrysningen finnes ikke", async () => {
+  const start = osloDay(6);
+  const [b] = await sql("select gen_random_uuid() as x");
+  const seriesId = b.x;
+  for (const n of [0, 7, 14]) {
+    const id = await insertEvent({ title: "G-Serie-fast", start: oslo(addDays(start, n), "16:00") });
+    await sql("update events set series_id = $1 where id = $2", [seriesId, id]);
+  }
+  const before = await rowsFor("G-Serie-fast");
+  await page.goto(`/kalender/${before[1].id}`);
+  await page.getByText("Gjentas fast. Endringer her gjelder bare denne gangen.").waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: "Gjentas hver uke" }).count(), 0);
+  await page.getByLabel("Hva skjer?").fill("G-Serie-fast endret");
+  await page.getByRole("button", { name: "Lagre endringer" }).click();
+  await page.waitForURL(/\/kalender$/);
+
+  const all = await sql("select title, series_id from events where series_id = $1 order by starts_at", [seriesId]);
+  assert.equal(all.length, 3, "antall rader i serien er uendret");
+  assert.deepEqual(all.map((r) => r.title), ["G-Serie-fast", "G-Serie-fast endret", "G-Serie-fast"]);
+});
+
+test("to telefoner: hendelsen ble serie mens skjemaet var åpent → feilmelding og ingen nye rader", async () => {
+  const start = osloDay(7);
+  const id = await insertEvent({ title: "G-Kappløp", start: oslo(start, "16:00") });
+  await page.goto(`/kalender/${id}`);
+  await page.getByRole("checkbox", { name: "Gjentas hver uke" }).check();
+  await page.getByLabel("Til og med").fill(addDays(start, 14));
+  // Den andre telefonen gjør hendelsen til en serie først.
+  const [{ s }] = await sql("select gen_random_uuid() as s");
+  await sql("update events set series_id = $1 where id = $2", [s, id]);
+  await page.getByRole("button", { name: "Lagre endringer" }).click();
+  await page.getByRole("alert").filter({ hasText: "Hendelsen er endret på den andre telefonen" }).waitFor();
+  assert.equal((await rowsFor("G-Kappløp")).length, 1, "ingen nye rader");
+});
+
+test("hurtigfeltet: repeat_until fra Claude forhåndsutfyller «Til og med», og skjemaet ber om feltet", async () => {
+  const date = osloDay(5);
+  const until = addDays(date, 21);
+  await nextAiResponse({
+    kind: "events",
+    output: { events: [aiEvent({ title: "G-AI-Til", date, repeat: "weekly", repeat_until: until })], explanation: "" },
+  });
+  await page.goto("/kalender");
+  await page.getByLabel("Ny hendelse: skriv eller lim inn tekst").fill("G-AI-Til hver uke til og med om tre uker");
+  await page.getByRole("button", { name: "Legg inn" }).click();
+  const untilInput = page.getByLabel("Til og med");
+  await untilInput.waitFor();
+  assert.equal(await untilInput.inputValue(), until);
+
+  const item = (await lastAiRequest()).schema.properties.events.items;
+  assert.ok(item.required.includes("repeat_until"), "repeat_until er påkrevd i skjemaet");
+  assert.equal(item.properties.repeat_until.type, "string");
+
+  await page.getByRole("button", { name: "Lagre 1 i kalenderen" }).click();
+  await page.getByRole("status").filter({ hasText: "«G-AI-Til» er lagt i kalenderen" }).waitFor();
+  assert.equal((await rowsFor("G-AI-Til")).length, 4);
+});

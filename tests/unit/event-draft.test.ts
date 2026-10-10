@@ -255,3 +255,16 @@ describe("repeatSummary", () => {
     assert.equal(repeatSummary({ date: "2026-10-20", allDay: false, startTime: "17:30" }, "none", "2026-12-15"), "");
   });
 });
+
+describe("tom dato", () => {
+  test("expandRepeat gir feilmelding i stedet for å kaste", () => {
+    for (const repeat of ["none", "weekly"] as const) {
+      assert.deepEqual(expandRepeat({ ...base, date: "" }, repeat, "2026-12-01", "x"), { error: "Velg en dato." });
+    }
+  });
+
+  test("defaultRepeatUntil og repeatDates kaster ikke", () => {
+    assert.equal(defaultRepeatUntil(""), "");
+    assert.deepEqual(repeatDates("", "weekly", "2026-12-01"), [""]);
+  });
+});

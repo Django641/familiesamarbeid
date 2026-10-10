@@ -17,6 +17,7 @@ export type AiEvent = {
   notes: string;
   /** Mangler i eldre svar → "none". */
   repeat?: string;
+  repeat_until?: string;
 };
 
 export type Row = EventDraft & { key: string; selected: boolean; repeat: Repeat; repeatUntil: string };
@@ -41,7 +42,10 @@ export function toRow(e: AiEvent, people: Person[], i: number): Row {
     description: e.notes,
     personIds: people.filter((p) => names.includes(p.name.toLowerCase())).map((p) => p.id),
     repeat: REPEATS.find((r) => r === e.repeat) ?? "none",
-    repeatUntil: defaultRepeatUntil(DATE_RE.test(e.date) ? e.date : osloDateKey(new Date())),
+    repeatUntil:
+      e.repeat_until && DATE_RE.test(e.repeat_until) && DATE_RE.test(e.date) && e.repeat_until > e.date
+        ? e.repeat_until
+        : defaultRepeatUntil(DATE_RE.test(e.date) ? e.date : osloDateKey(new Date())),
   };
 }
 
