@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { EVENT_CATEGORIES } from "@/lib/config";
 import type { Person } from "@/lib/types";
 
+import { RepeatPicker } from "../repeat-picker";
 import type { Row } from "./ai-draft";
 
 /** AI-forslagene som redigerbare kort, med Lagre og Tilbake. Ingenting lagres før brukeren trykker Lagre. */
@@ -84,6 +85,13 @@ export function DraftReview({
               value={r.personIds}
               onChange={(ids) => onUpdate(r.key, { personIds: ids })}
               label="Gjelder"
+            />
+            <RepeatPicker
+              id={`repeat-${r.key}`}
+              draft={r}
+              repeat={r.repeat}
+              until={r.repeatUntil}
+              onChange={(repeat, repeatUntil) => onUpdate(r.key, { repeat, repeatUntil })}
             />
             {r.location ? <p className="text-xs text-[var(--color-muted)]">📍 {r.location}</p> : null}
             {r.description ? <p className="text-xs text-[var(--color-muted)]">{r.description}</p> : null}

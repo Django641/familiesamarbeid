@@ -21,6 +21,7 @@ Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble 
 - [ ] Opplasting av store bilder/PDF-er (> 20 MB) til Blob fra iPhone
 - [ ] «Fra tekst»/hurtigfeltet på ekte meldinger fra Skolemelding/Spond og korte notiser («konsert i morgen kl. 20»)
 - [ ] Bilde/PDF → hendelser på ekte iPhone (HEIC-bilder fra kamera/bilder, PDF fra Filer)
+- [ ] «Gjentas hver uke» på ekte iPhone, og hurtigfeltet med «Ada fotball hver tirsdag 17:30» mot ekte Claude
 - [ ] Uker-visningen på ekte iPhone (lesbarhet av stolper/emoji, trykk på dag)
 
 ## ✅ Gjort
@@ -29,6 +30,7 @@ Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble 
 - [x] Vercel-prosjekt, Blob-lagring og miljøvariabler satt opp av Claude
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
 - [x] **Kalender pakke 1** (etter agentdrøfting, se `docs/KALENDER.md`): «Uker»-visning med mange uker under hverandre (ukenummer, reiser/ferier som stolper, aktiviteter som emoji, dagsark ved trykk), bryter Uker/Liste i toppfeltet (huskes per telefon), hurtigfelt «Skriv eller lim inn en avtale» øverst i Kalender med AI-forslag som bekreftes før lagring, «＋» per dag i Liste
+- [x] **Gjentakende hendelser lettere å finne** (eieren 10. okt: «huke av for trening hver tirsdag»): avkrysning «Gjentas hver uke» rett under dato/tid (før lå valget som nedtrekksliste nederst og bare ved ny hendelse). Hver uke/annenhver uke, «til og med» foreslås til skoleslutt før jul/sommer, og en linje viser «Hver tirsdag kl. 17:30 · 11 ganger, siste 18. des.». Virker også når man redigerer en enkelthendelse (blir serie fra den datoen), og på AI-forslagene i hurtigfeltet — Claude huker av selv når teksten sier «hver tirsdag». Ingen migrasjon.
 - [x] **Testoppsett i repoet** (retro 9. okt): `npm test` (40 enhetstester) og `npm run e2e` (47 nettlesertester, ~50 s) mot lokal PGlite og falske Claude- og Blob-tjenester som viser hva appen faktisk sender. Dekker innlogging/invitasjon, kalender, hurtigfelt (tekst, bilde, PDF, innliming), Fra tekst-siden, navigasjon, dokumenter (privat Blob, opplasting/visning/sletting), handleliste, gjøremål, beskjeder og live-synk. Ikke dekket: Safari/iPhone, ekte Claude/Blob, push. Se `tests/README.md`.
 - [x] **Innleggingsfeltet delt opp** (`fra-tekst/`: hook, forslagskort, ren logikk) uten endret oppførsel.
 - [x] **Kjennetegn per person** (Innstillinger → Familien): f.eks. «født 2017, 4B på Tøyen skole, fotball J2017». Claude bruker dem til å koble beskjeder til riktig person; klassetrinn regnes fra fødselsår så det stemmer neste skoleår. Migrasjon `0002_person_hints` (kjøres automatisk).

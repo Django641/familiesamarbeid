@@ -58,6 +58,7 @@ function summarize(body) {
     model: body.model,
     max_tokens: body.max_tokens,
     effort: body.output_config?.effort ?? null,
+    schema: body.output_config?.format?.schema ?? null,
     fallbacks: body.fallbacks ?? null,
     system: typeof body.system === "string" ? body.system : JSON.stringify(body.system),
     text: textOf(content),

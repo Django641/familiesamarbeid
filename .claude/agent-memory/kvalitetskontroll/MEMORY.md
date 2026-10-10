@@ -18,3 +18,6 @@
 - Testdatoer med `Date.now() + n*86_400_000` blir feil rundt sommertid-skiftet (25-timers døgn). Bruk datostreng + addDays.
 - Fixtures: se etter ekte opplysninger om barna (skole, klasse, lag, fødselsår).
 - Falske tjenester (Blob/Claude) bør registrere sikkerhetskritiske felt (access: private) så testen kan sjekke dem.
+- `addDays`/`osloToIso` kaster RangeError på tom/ugyldig datostreng. Ny kode som kaller dem FØR `draftToRow` sin «Velg en dato.»-sjekk gjør en pen feilmelding om til en død Lagre-knapp (unntaket kastes før try). iOS-datofelt kan tømmes («Nullstill»), og AI-utkast kan ha date "" (toRow). Sjekk alltid tom dato i nye hjelpefunksjoner.
+- Server Actions som endrer «form» på en rad (enkelt → serie o.l.) ut fra klientens snapshot: to telefoner med samme gamle skjema → dobbel konvertering. Krev betingelse i WHERE (f.eks. `isNull(series_id)`) og norsk feilmelding ved 0 rader.
+- zod `.max(n)`/`.min(n)` uten egen melding gir engelsk tekst («Too big: …») som vises rett i UI via `issues[0].message`.

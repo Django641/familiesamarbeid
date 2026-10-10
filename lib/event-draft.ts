@@ -3,7 +3,7 @@
 
 import { eventEndKey } from "@/lib/events";
 import type { CalendarEvent } from "@/lib/types";
-import { osloDateKey, osloTime, osloToIso } from "@/lib/utils";
+import { addDays, formatDate, osloDateKey, osloTime, osloToIso } from "@/lib/utils";
 
 export type EventDraft = {
   title: string;
@@ -94,4 +94,59 @@ export function draftToRow(d: EventDraft): { row: EventRowDraft } | { error: str
       person_ids: d.personIds,
     },
   };
+}
+
+// ---------------------------------------------------------------------
+// Gjentakelse: «gjentas hver uke» lager enkeltkopier med felles series_id.
+// ---------------------------------------------------------------------
+
+export type Repeat = "none" | "weekly" | "biweekly";
+export const REPEATS: Repeat[] = ["none", "weekly", "biweekly"];
+
+/** Maks antall ganger i én serie (hver uke i over et år). */
+export const MAX_REPEATS = 60;
+
+/** Forslag til «til og med»: skoleslutt før sommer (19. juni) eller jul (19. des.), minst fire uker fram. */
+export function defaultRepeatUntil(date: string): string {
+  const year = Number(date.slice(0, 4));
+  const earliest = addDays(date, 28);
+  return [`${year}-06-19`, `${year}-12-19`, `${year + 1}-06-19`].find((d) => d >= earliest) ?? addDays(date, 70);
+}
+
+/** Datoene i serien (første dato først, maks MAX_REPEATS). Uten gjentakelse: bare startdatoen. */
+export function repeatDates(date: string, repeat: Repeat, until: string): string[] {
+  if (repeat === "none" || !until || until <= date) return [date];
+  const step = repeat === "weekly" ? 7 : 14;
+  const dates: string[] = [];
+  for (let d = date; d <= until && dates.length < MAX_REPEATS; d = addDays(d, step)) dates.push(d);
+  return dates;
+}
+
+/** Én rad per gang i serien. Flere enn én gang → alle får samme series_id. */
+export function expandRepeat(
+  d: EventDraft,
+  repeat: Repeat,
+  until: string,
+  seriesId: string
+): { rows: EventRowDraft[] } | { error: string } {
+  const dates = repeatDates(d.date, repeat, until);
+  const step = repeat === "biweekly" ? 14 : 7;
+  const rows: EventRowDraft[] = [];
+  for (const [i, date] of dates.entries()) {
+    const result = draftToRow({ ...d, date, endDate: addDays(d.endDate || d.date, i * step) });
+    if ("error" in result) return result;
+    rows.push(dates.length > 1 ? { ...result.row, series_id: seriesId } : result.row);
+  }
+  return { rows };
+}
+
+/** «Hver tirsdag kl. 17:30 · 11 ganger, siste 15. des.» */
+export function repeatSummary(d: Pick<EventDraft, "date" | "allDay" | "startTime">, repeat: Repeat, until: string): string {
+  if (repeat === "none" || !d.date) return "";
+  const dates = repeatDates(d.date, repeat, until);
+  if (dates.length < 2) return "Bare én gang — velg en senere «til og med»-dato.";
+  const weekday = new Date(`${d.date}T12:00:00Z`).toLocaleDateString("nb-NO", { weekday: "long", timeZone: "UTC" });
+  const when = `${repeat === "weekly" ? "Hver" : "Annenhver"} ${weekday}${!d.allDay && d.startTime ? ` kl. ${d.startTime}` : ""}`;
+  const cap = dates.length === MAX_REPEATS ? ` (maks ${MAX_REPEATS})` : "";
+  return `${when} · ${dates.length} ganger${cap}, siste ${formatDate(dates[dates.length - 1])}`;
 }

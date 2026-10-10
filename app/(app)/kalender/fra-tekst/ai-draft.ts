@@ -1,6 +1,7 @@
 import { EVENT_CATEGORIES } from "@/lib/config";
-import type { EventDraft } from "@/lib/event-draft";
+import { type EventDraft, REPEATS, type Repeat, defaultRepeatUntil } from "@/lib/event-draft";
 import type { Person } from "@/lib/types";
+import { osloDateKey } from "@/lib/utils";
 
 /** Slik /api/ai/parse-events returnerer en hendelse. */
 export type AiEvent = {
@@ -14,9 +15,11 @@ export type AiEvent = {
   category: string;
   people: string[];
   notes: string;
+  /** Mangler i eldre svar → "none". */
+  repeat?: string;
 };
 
-export type Row = EventDraft & { key: string; selected: boolean };
+export type Row = EventDraft & { key: string; selected: boolean; repeat: Repeat; repeatUntil: string };
 
 const TIME_RE = /^\d{2}:\d{2}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -37,6 +40,8 @@ export function toRow(e: AiEvent, people: Person[], i: number): Row {
     location: e.location,
     description: e.notes,
     personIds: people.filter((p) => names.includes(p.name.toLowerCase())).map((p) => p.id),
+    repeat: REPEATS.find((r) => r === e.repeat) ?? "none",
+    repeatUntil: defaultRepeatUntil(DATE_RE.test(e.date) ? e.date : osloDateKey(new Date())),
   };
 }
 

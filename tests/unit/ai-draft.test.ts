@@ -53,6 +53,25 @@ describe("toRow", () => {
   });
 });
 
+describe("toRow: repeat", () => {
+  test("weekly og biweekly fra AI-en plukkes opp", () => {
+    assert.equal(toRow({ ...base, repeat: "weekly" }, [], 0).repeat, "weekly");
+    assert.equal(toRow({ ...base, repeat: "biweekly" }, [], 0).repeat, "biweekly");
+  });
+
+  test("manglende eller ukjent verdi gir none", () => {
+    assert.equal(toRow(base, [], 0).repeat, "none");
+    for (const repeat of ["", "daily", "WEEKLY", "monthly"]) {
+      assert.equal(toRow({ ...base, repeat }, [], 0).repeat, "none", repeat);
+    }
+  });
+
+  test("«til og med» foreslås ut fra datoen", () => {
+    assert.equal(toRow({ ...base, date: "2026-10-20" }, [], 0).repeatUntil, "2026-12-19");
+    assert.equal(toRow({ ...base, date: "2026-01-13" }, [], 0).repeatUntil, "2026-06-19");
+  });
+});
+
 describe("isReadableFile", () => {
   const file = (name: string, type: string) => new File([""], name, { type });
 

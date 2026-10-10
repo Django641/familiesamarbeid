@@ -34,7 +34,8 @@ function toDb(e: z.output<typeof EventRow>) {
 
 export async function createEvents(rows: EventRowInput[]): Promise<Result> {
   const user = await requireUser();
-  const parsed = z.array(EventRow).min(1).max(60).safeParse(rows);
+  // Flere AI-forslag kan hver være en serie (maks 60 ganger hver).
+  const parsed = z.array(EventRow).min(1).max(300).safeParse(rows);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Ugyldig hendelse." };
 
   await db.insert(events).values(parsed.data.map((e) => ({ ...toDb(e), created_by: user.id })));
@@ -49,11 +50,23 @@ export async function createEvents(rows: EventRowInput[]): Promise<Result> {
   return {};
 }
 
-export async function updateEvent(id: string, row: EventRowInput): Promise<Result> {
-  await requireUser();
-  const parsed = EventRow.safeParse(row);
+/** Lagrer endringer. `repeats` = senere ganger når en enkelthendelse gjøres om til en serie. */
+export async function updateEvent(id: string, row: EventRowInput, repeats: EventRowInput[] = []): Promise<Result> {
+  const user = await requireUser();
+  const parsed = z.object({ row: EventRow, repeats: z.array(EventRow).max(59) }).safeParse({ row, repeats });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Ugyldig hendelse." };
-  await db.update(events).set(toDb(parsed.data)).where(eq(events.id, z.uuid().parse(id)));
+  const eventId = z.uuid().parse(id);
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(events)
+      .set(toDb(parsed.data.row))
+      .where(eq(events.id, eventId))
+      .returning({ id: events.id });
+    // Slettet av den andre i mellomtiden → ikke lag en serie uten start.
+    if (updated.length > 0 && parsed.data.repeats.length > 0) {
+      await tx.insert(events).values(parsed.data.repeats.map((e) => ({ ...toDb(e), created_by: user.id })));
+    }
+  });
   revalidatePath("/", "layout");
   return {};
 }

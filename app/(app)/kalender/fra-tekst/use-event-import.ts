@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { type EventRowDraft, draftToRow } from "@/lib/event-draft";
+import { type EventRowDraft, expandRepeat } from "@/lib/event-draft";
 import { prepareUpload, snapshotFile } from "@/lib/prepare-upload";
 import type { Person } from "@/lib/types";
 
@@ -179,7 +179,7 @@ export function useEventImport({
   async function save() {
     if (!rows) return;
     const chosen = rows.filter((r) => r.selected);
-    const converted = chosen.map((r) => draftToRow(r));
+    const converted = chosen.map((r) => expandRepeat(r, r.repeat, r.repeatUntil, crypto.randomUUID()));
     const bad = converted.findIndex((c) => "error" in c);
     if (bad >= 0) {
       const err = converted[bad] as { error: string };
@@ -189,7 +189,7 @@ export function useEventImport({
     setBusy(true);
     setError(null);
     try {
-      const res = await createEvents(converted.map((c) => (c as { row: EventRowDraft }).row));
+      const res = await createEvents(converted.flatMap((c) => (c as { rows: EventRowDraft[] }).rows));
       if (res.error) {
         setError(res.error);
         setBusy(false);
