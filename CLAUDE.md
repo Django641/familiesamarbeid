@@ -75,6 +75,7 @@ Endre skjemaet i `lib/db/app-schema.ts`, kjør `npm run db:generate`, og commit 
 ## Git og levering
 
 - **Én branch:** `claude/brave-galileo-fx7ekz` er eneste branch og produksjonsbranch. Vercel-prosjektet `familiesamarbeid` deployer automatisk ved hver push. Ingen PR-er, ingen `main`.
+- **Sky-økter får eget grennavn** (f.eks. `claude/cool-mendel-…`). Push da til øktas gren *og* til produksjon med `git push origin HEAD:claude/brave-galileo-fx7ekz` (tillatt i `.claude/settings.json`, eieren har sagt ja 10. okt). Sjekk først at det er en fast-forward (`git merge-base --is-ancestor origin/claude/brave-galileo-fx7ekz HEAD`); hvis ikke: hent og slå sammen, aldri force-push.
 - **Ferdig arbeid pushes uten å spørre** når `npm run check` og `npm test` er grønne, `npm run e2e` er kjørt for endret brukerflyt/integrasjon, og `kvalitetskontroll` ikke har 🔴-funn (`/lever-endring`). Etter push: `/sjekk-produksjon`. Aldri force-push.
 - **Hver feil som når eieren får en test** (`testansvarlig`).
 - Push = produksjon, så halvferdig eller risikabelt arbeid pushes ikke. Krever endringen en databasemigrasjon eller nye env-variabler, si tydelig fra til eieren hva som må gjøres og hva som ikke virker før det er gjort.

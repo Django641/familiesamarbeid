@@ -11,7 +11,9 @@
       "Bash(git status)",
       "Bash(git diff *)",
       "Bash(git log *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(git push origin HEAD:claude/brave-galileo-fx7ekz)",
+      "Bash(git push origin claude/brave-galileo-fx7ekz)"
     ],
     "deny": [
       "Read(./.env)",
@@ -25,7 +27,10 @@
       {
         "matcher": "startup|resume",
         "hooks": [
-          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh" }
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
         ]
       }
     ],
@@ -33,7 +38,10 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-migrations.sh" }
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-migrations.sh"
+          }
         ]
       }
     ]
