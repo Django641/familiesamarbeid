@@ -20,7 +20,9 @@ import {
   makeTestPng,
   nextAiResponse,
   osloDay,
+  oslo,
   resetAi,
+  sql,
   trackErrors,
   waitUntil,
 } from "./helpers.mjs";
@@ -110,6 +112,36 @@ test("tekst → AI-forslag → lagre → hendelsen står i kalenderen", async ()
   await page.getByRole("button", { name: "Lagre 1 i kalenderen" }).click();
   await page.getByRole("status").filter({ hasText: "«Konsert Oslo Spektrum» er lagt i kalenderen" }).waitFor();
   await page.getByRole("button", { name: /Konsert Oslo Spektrum 20:00/ }).first().waitFor();
+});
+
+// Feil eieren fant 11. okt: «Hele dagen» på forslagskortet var bare tekst — gikk ikke å sette klokkeslett.
+test("heldagsforslag kan endres til klokkeslett før lagring", async () => {
+  const date = osloDay(3);
+  await nextAiResponse({
+    kind: "events",
+    output: { events: [aiEvent({ title: "Familiesamling Horten", date, all_day: true, start_time: "" })], explanation: "" },
+  });
+  await field().fill("Familiesamling i Horten");
+  await page.getByRole("button", { name: "Legg inn" }).click();
+  await titleInput().waitFor();
+
+  const allDay = page.getByRole("checkbox", { name: "Hele dagen" });
+  assert.equal(await allDay.isChecked(), true);
+  assert.equal(await page.getByRole("textbox", { name: "Klokkeslett" }).count(), 0);
+
+  await allDay.uncheck();
+  // Uten klokkeslett sier lagringen hva som mangler.
+  await page.getByRole("button", { name: "Lagre 1 i kalenderen" }).click();
+  assert.match(await alert(page).textContent(), /Velg et klokkeslett/);
+
+  await page.getByRole("textbox", { name: "Klokkeslett" }).fill("14:00");
+  await page.getByRole("button", { name: "Lagre 1 i kalenderen" }).click();
+  await page.getByRole("status").filter({ hasText: "«Familiesamling Horten» er lagt i kalenderen" }).waitFor();
+
+  const [row] = await sql("select all_day, starts_at from events where title = 'Familiesamling Horten'");
+  assert.equal(row.all_day, false);
+  assert.equal(new Date(row.starts_at).toISOString(), oslo(date, "14:00"));
+  await sql("delete from events where title = 'Familiesamling Horten'");
 });
 
 test("tomt AI-svar viser forklaringen fra Claude", async () => {

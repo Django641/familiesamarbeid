@@ -57,17 +57,30 @@ export function DraftReview({
                 value={r.date}
                 onChange={(e) => onUpdate(r.key, { date: e.target.value, endDate: e.target.value > r.endDate ? e.target.value : r.endDate })}
               />
-              {r.allDay ? (
-                <span className="flex items-center text-sm text-[var(--color-muted)]">Hele dagen</span>
-              ) : (
+              {r.allDay ? null : (
                 <Input
                   aria-label="Klokkeslett"
                   type="time"
                   value={r.startTime}
-                  onChange={(e) => onUpdate(r.key, { startTime: e.target.value })}
+                  onChange={(e) =>
+                    onUpdate(r.key, {
+                      startTime: e.target.value,
+                      // Sluttid vises ikke på kortet — fjern den hvis den havner før ny start.
+                      ...(r.endTime && r.endDate === r.date && r.endTime <= e.target.value ? { endTime: "" } : {}),
+                    })
+                  }
                 />
               )}
             </div>
+            <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-[var(--color-primary)]"
+                checked={r.allDay}
+                onChange={(e) => onUpdate(r.key, { allDay: e.target.checked, endTime: "" })}
+              />
+              Hele dagen
+            </label>
             <div className="flex flex-col gap-1">
               <Label htmlFor={`cat-${r.key}`} className="sr-only">
                 Type
