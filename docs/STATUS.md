@@ -78,6 +78,7 @@ Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 - [ ] **Spond inn i kalenderen** (Spond → Google-kalender «Barna» → iCal-import med Vercel Cron). Bygget i `lib/ics-import.ts`, `app/api/cron/sync-calendars` og `innstillinger/external-calendars.tsx` i commit `50e5387`.
 
 ### P1
+- [ ] **Ukeplan (skole)** — designforslag i `docs/UKEPLAN.md`, venter på eierens svar på fire spørsmål
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
 - [ ] Kalenderen: Pakke 2 (som sist, dato-chips, rediger serie, angre, ny/endret) og 3 (borte-chip, kontinuerlig rulling) — se `docs/KALENDER.md`
 - [ ] Angre ved sletting av hendelse
