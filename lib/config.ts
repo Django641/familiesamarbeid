@@ -23,6 +23,9 @@ export const EVENT_CATEGORIES = [
 /** Cookie som husker valgt kalendervisning («uker»/«liste») per telefon. */
 export const CALENDAR_VIEW_COOKIE = "kalender-visning";
 
+/** Cookie som husker hvilke sider som står i bunnmenyen (kommaseparert) per telefon. */
+export const BOTTOM_NAV_COOKIE = "bunnmeny";
+
 export type EventCategory = (typeof EVENT_CATEGORIES)[number]["value"];
 
 export function categoryMeta(value: string) {

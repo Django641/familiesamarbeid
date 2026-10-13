@@ -1,7 +1,10 @@
 import { inArray } from "drizzle-orm";
+import { cookies } from "next/headers";
 
 import { TopBar } from "@/components/top-bar";
 import { allowedEmails } from "@/lib/auth";
+import { BOTTOM_NAV_COOKIE } from "@/lib/config";
+import { parseNavCookie } from "@/lib/nav-items";
 import { inviteCode } from "@/lib/invite";
 import { db } from "@/lib/db";
 import { user as userTable } from "@/lib/db/schema";
@@ -10,13 +13,15 @@ import { getFamily } from "@/lib/session";
 import { AccessCard } from "./access-card";
 import { AccountCard } from "./account-card";
 import { FamilyEditor } from "./family-editor";
+import { NavCard } from "./nav-card";
 import { PasskeyCard } from "./passkey-card";
 import { PushToggle } from "./push-toggle";
 
 export const metadata = { title: "Innstillinger" };
 
 export default async function SettingsPage() {
-  const { people, me, userId } = await getFamily();
+  const [{ people, me, userId }, cookieStore] = await Promise.all([getFamily(), cookies()]);
+  const nav = parseNavCookie(cookieStore.get(BOTTOM_NAV_COOKIE)?.value);
   const emails = allowedEmails();
   const registered = emails.length
     ? await db.select({ id: userTable.id, email: userTable.email }).from(userTable).where(inArray(userTable.email, emails))
@@ -30,6 +35,7 @@ export default async function SettingsPage() {
       <TopBar title="Innstillinger" back="/hjem" />
       <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-4">
         <FamilyEditor people={people} meId={me.id} />
+        <NavCard initial={nav} />
         <PasskeyCard />
         <PushToggle />
         <AccessCard
