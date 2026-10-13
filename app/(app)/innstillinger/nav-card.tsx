@@ -5,9 +5,10 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BOTTOM_NAV_COOKIE } from "@/lib/config";
-import { MAX_NAV, NAV_ITEMS, type NavId, serializeNav, toggleNav } from "@/lib/nav-items";
+import { MAX_NAV, NAV_ITEMS, type NavId, toggleNav } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
+
+import { setBottomNav } from "./actions";
 
 export function NavCard({ initial }: { initial: NavId[] }) {
   const router = useRouter();
@@ -17,8 +18,7 @@ export function NavCard({ initial }: { initial: NavId[] }) {
     const next = toggleNav(selected, id);
     if (next.length === selected.length) return;
     setSelected(next);
-    document.cookie = `${BOTTOM_NAV_COOKIE}=${serializeNav(next)}; path=/; max-age=31536000; samesite=lax`;
-    router.refresh();
+    void setBottomNav(next).then(() => router.refresh());
   }
 
   return (
@@ -51,7 +51,7 @@ export function NavCard({ initial }: { initial: NavId[] }) {
                     className={cn(
                       "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2",
                       checked
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
                         : "border-[var(--color-border)]"
                     )}
                     aria-hidden

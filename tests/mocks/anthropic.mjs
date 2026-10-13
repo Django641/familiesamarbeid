@@ -1,12 +1,13 @@
 // Falsk Anthropic Messages API for e2e-testene (appen peker hit via ANTHROPIC_BASE_URL).
 //
 // - POST /v1/messages            svarer i samme form som ekte Messages API. Innholdet velges
-//                                ut fra JSON-skjemaet appen ber om (events / ordered / place_after),
+//                                ut fra JSON-skjemaet appen ber om (events / ordered / place_after / weekly_plan),
 //                                eller fra et svar testen har lagt i kø.
 // - POST /__next-response        legg et svar i kø: { output: {...} } (blir JSON i text-blokka),
 //                                eller { text: "..." }, { status, error } for feil, ev. { stop_reason }.
-//                                Valgfritt { kind: "events" | "ordered" | "place_after" } — da brukes
-//                                svaret bare for den typen kall.
+//                                Valgfritt { kind: "events" | "ordered" | "place_after" | "weekly_plan" } — da brukes
+//                                svaret bare for den typen kall. Valgfritt { match: "tekst" } — da brukes svaret
+//                                bare for kall der et vedlegg inneholder teksten (uavhengig av kallrekkefølge).
 // - GET  /__last-request         siste kall appen gjorde, med vedlegg (base64) og systemprompt.
 // - GET  /__requests             alle kall (uten vedleggsdata).
 // - POST /__reset                tøm kø og logg.
@@ -20,6 +21,7 @@ function kindOf(body) {
   if ("events" in props) return "events";
   if ("ordered" in props) return "ordered";
   if ("place_after" in props) return "place_after";
+  if ("homework" in props) return "weekly_plan";
   return "ukjent";
 }
 
@@ -31,6 +33,36 @@ function textOf(content) {
     .join("\n");
 }
 
+function addDays(dateKey, n) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/**
+ * Standardsvar for ukeplan: tolker systemprompten på samme måte som Claude ville gjort —
+ * første barn i familielista («- Navn (barn)») og «Mandag i denne uka er YYYY-MM-DD».
+ */
+function defaultWeeklyPlan(body) {
+  const system = typeof body.system === "string" ? body.system : JSON.stringify(body.system);
+  const monday = system.match(/Mandag i denne uka er (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+  const child = system.match(/^- (.+?) \(barn\)/m)?.[1] ?? "";
+  if (!monday) return { person: child, week_start: "", goals: [], homework: [], calendar: [], explanation: "Ingen uke i prompten." };
+  return {
+    person: child,
+    week_start: monday,
+    goals: ["Jeg kan 7-gangen"],
+    homework: [
+      { text: "Les side 12–15 i lesebok", due: addDays(monday, 1) },
+      { text: "Øv på glosene denne uka", due: "" },
+    ],
+    calendar: [
+      { title: "Tur til Nordmarka", date: addDays(monday, 2), start_time: "09:00", end_time: "13:00", all_day: false, kind: "hendelse", notes: "Oppmøte ved skolen" },
+      { title: "🩳 Gymtøy", date: addDays(monday, 3), start_time: "", end_time: "", all_day: true, kind: "ta_med", notes: "" },
+    ],
+    explanation: "",
+  };
+}
+
 /** Standardsvar når testen ikke har bedt om noe spesielt. */
 function defaultOutput(kind, body) {
   const userText = textOf(body.messages?.[0]?.content);
@@ -39,6 +71,7 @@ function defaultOutput(kind, body) {
     return { ordered: Array.from({ length: count }, (_, i) => i + 1) };
   }
   if (kind === "place_after") return { place_after: 0 };
+  if (kind === "weekly_plan") return defaultWeeklyPlan(body);
   return { events: [], explanation: "Testserveren har ikke fått beskjed om hva den skal svare." };
 }
 
@@ -116,7 +149,12 @@ export async function startAnthropicMock({ port = 0, host = "127.0.0.1", quiet =
         requests.push(record);
         if (!quiet) console.log("[anthropic-mock]", record.kind, record.model, record.attachments.map((a) => a.media_type));
 
-        const index = queue.findIndex((q) => !q.kind || q.kind === record.kind);
+        // Valgfritt { match: "tekst" }: bare for kall der et vedlegg (dekodet som latin1) inneholder teksten.
+        // Gjør svar uavhengige av i hvilken rekkefølge parallelle kall kommer.
+        const attachmentText = record.attachments.map((a) => Buffer.from(a.data, "base64").toString("latin1")).join("\n");
+        const index = queue.findIndex(
+          (q) => (!q.kind || q.kind === record.kind) && (!q.match || attachmentText.includes(q.match))
+        );
         const planned = index >= 0 ? queue.splice(index, 1)[0] : null;
         if (planned?.status && planned.status >= 400) {
           return json(

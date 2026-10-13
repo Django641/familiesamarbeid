@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, isNull } from "drizzle-orm";
 
 import { TopBar } from "@/components/top-bar";
 import { db } from "@/lib/db";
@@ -11,7 +11,13 @@ export const metadata = { title: "Dokumenter" };
 
 export default async function DocumentsPage() {
   const { people } = await getFamily();
-  const rows = await db.select().from(documents).orderBy(desc(documents.created_at)).limit(500);
+  // Ukeplan-originaler som hører til en uke vises under Lekser, ikke her.
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(isNull(documents.homework_week_id))
+    .orderBy(desc(documents.created_at))
+    .limit(500);
 
   return (
     <>

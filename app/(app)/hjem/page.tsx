@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, ListChecks, MessageCircle, Pin, Plus, ShoppingCart } from "lucide-react";
 
+import { Avatar } from "@/components/avatar";
 import { PersonDots } from "@/components/person-dots";
 import { TopBar } from "@/components/top-bar";
 import { buttonClass } from "@/components/ui/button";
@@ -10,12 +11,14 @@ import { WEATHER_LOCATIONS, categoryMeta } from "@/lib/config";
 import { and, asc, count, desc, eq, isNotNull, lte } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { messages, shopping_items, tasks } from "@/lib/db/schema";
+import { homework_items, homework_weeks, messages, shopping_items, tasks } from "@/lib/db/schema";
 import { buildAgenda } from "@/lib/events";
 import { eventsInRange } from "@/lib/events-db";
 import { getFamily } from "@/lib/session";
+import { type HomeworkEntry, homeworkDayFor, homeworkForDay } from "@/lib/homework";
 import { getForecast } from "@/lib/weather";
-import { addDays, dayLabel, osloDateKey } from "@/lib/utils";
+import { addDays, dayLabel, osloDateKey, osloTime } from "@/lib/utils";
+import { mondayOf } from "@/lib/week-layout";
 
 export const metadata = { title: "Hjem" };
 
@@ -33,8 +36,10 @@ export default async function HomePage() {
   const { people, me } = await getFamily();
   const todayKey = osloDateKey(new Date());
   const toKey = addDays(todayKey, 6);
+  const homeworkDay = homeworkDayFor(todayKey, osloTime(new Date()));
+  const kids = people.filter((p) => p.kind === "barn");
 
-  const [events, pinned, dueSoon, [{ value: openTasks }], [{ value: toBuy }], ...forecasts] = await Promise.all([
+  const [events, pinned, dueSoon, homeworkRows, [{ value: openTasks }], [{ value: toBuy }], ...forecasts] = await Promise.all([
     eventsInRange(todayKey, toKey, 200),
     db.select().from(messages).where(eq(messages.pinned, true)).orderBy(desc(messages.created_at)).limit(5),
     db
@@ -43,11 +48,23 @@ export default async function HomePage() {
       .where(and(eq(tasks.done, false), isNotNull(tasks.due_date), lte(tasks.due_date, addDays(todayKey, 2))))
       .orderBy(asc(tasks.due_date))
       .limit(10),
+    kids.length === 0
+      ? Promise.resolve([])
+      : db
+          .select({ item: homework_items, person_id: homework_weeks.person_id })
+          .from(homework_items)
+          .innerJoin(homework_weeks, eq(homework_weeks.id, homework_items.week_id))
+          .where(and(eq(homework_items.due_date, homeworkDay.dateKey), eq(homework_items.kind, "lekse"), eq(homework_items.done, false))),
     db.select({ value: count() }).from(tasks).where(eq(tasks.done, false)),
     db.select({ value: count() }).from(shopping_items).where(eq(shopping_items.status, "ma_kjopes")),
     ...WEATHER_LOCATIONS.map((l) => getForecast(l.lat, l.lng)),
   ]);
 
+  const homework = homeworkForDay(
+    homeworkRows.map(({ item, person_id }): HomeworkEntry => ({ ...item, person_id })),
+    homeworkDay.dateKey,
+    kids.map((k) => k.id)
+  );
   const week = buildAgenda(events, todayKey, toKey);
   const weatherRows = WEATHER_LOCATIONS.map((l, i) => ({ name: l.name, forecast: forecasts[i] ?? [] }));
 
@@ -73,6 +90,30 @@ export default async function HomePage() {
           <Stat href="/gjoremal" icon={<ListChecks className="h-5 w-5" aria-hidden />} value={openTasks} label="gjøremål" />
           <Stat href="/beskjeder" icon={<MessageCircle className="h-5 w-5" aria-hidden />} value={pinned.length} label="festet" />
         </div>
+
+        {homework.length > 0 ? (
+          <Card>
+            <CardContent className="p-3">
+              <h2 className="mb-1 text-sm font-semibold">📚 {homeworkDay.title}</h2>
+              <ul>
+                {homework.map((c) => {
+                  const kid = kids.find((k) => k.id === c.personId)!;
+                  return (
+                    <li key={c.personId}>
+                      <Link
+                        href={`/lekser?uke=${mondayOf(homeworkDay.dateKey)}&barn=${c.personId}`}
+                        className="flex min-h-11 items-center gap-2 text-sm"
+                      >
+                        <Avatar person={kid} size="sm" />
+                        <span className="min-w-0 flex-1 truncate">{c.entries.map((e) => e.text).join(" · ")}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {dueSoon.length > 0 ? (
           <Card>

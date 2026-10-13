@@ -219,6 +219,42 @@ export function aiEvent(overrides = {}) {
   };
 }
 
+/** Mandag «YYYY-MM-DD» i uka n uker fram (0 = denne uka), Oslo-tid. */
+export function osloMonday(n = 0) {
+  const today = osloDay(0);
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = søndag
+  return osloDay((dow === 0 ? -6 : 1 - dow) + 7 * n);
+}
+
+/**
+ * Ukeplan i formatet appen ber Claude om (se app/api/ai/parse-weekly-plan/route.ts).
+ * Standard: Mia, denne uka, to lekser, ett mål, én tur og «ta med»-gymtøy torsdag.
+ */
+export function aiWeeklyPlan(overrides = {}) {
+  const monday = overrides.week_start || osloMonday(0);
+  const day = (n) => osloDayFrom(monday, n);
+  return {
+    person: "Mia",
+    week_start: monday,
+    goals: ["Jeg kan 7-gangen"],
+    homework: [
+      { text: "Les side 12–15 i lesebok", due: day(1) },
+      { text: "Øv på glosene denne uka", due: "" },
+    ],
+    calendar: [
+      { title: "Tur til Nordmarka", date: day(2), start_time: "09:00", end_time: "13:00", all_day: false, kind: "hendelse", notes: "" },
+      { title: "🩳 Gymtøy", date: day(3), start_time: "", end_time: "", all_day: true, kind: "ta_med", notes: "" },
+    ],
+    explanation: "",
+    ...overrides,
+  };
+}
+
+function osloDayFrom(dateKey, n) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
 // --- Falsk Blob -----------------------------------------------------------
 
 export async function blobFiles() {

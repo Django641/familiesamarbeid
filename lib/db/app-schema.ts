@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -9,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -98,6 +100,57 @@ export const tasks = pgTable(
   (t) => [index("tasks_done_idx").on(t.done, t.due_date)]
 );
 
+/**
+ * Lekser: én uke per barn (fra ukeplanen eller lagt til for hånd). Se docs/UKEPLAN.md.
+ * Slettes barnet, forsvinner ukene og leksene (cascade). Dokumentene beholdes (set null).
+ */
+export const homework_weeks = pgTable(
+  "homework_weeks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    person_id: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    /** Mandagen i uka (Oslo-dato). */
+    week_start: date("week_start", { mode: "string" }).notNull(),
+    created_by: createdBy(),
+    created_at: createdAt(),
+    updated_at: updatedAt(),
+  },
+  (t) => [
+    unique("homework_weeks_person_week_uq").on(t.person_id, t.week_start),
+    check("homework_weeks_monday_ck", sql`extract(isodow from ${t.week_start}) = 1`),
+  ]
+);
+
+export const homework_items = pgTable(
+  "homework_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    week_id: uuid("week_id")
+      .notNull()
+      .references(() => homework_weeks.id, { onDelete: "cascade" }),
+    /** lekse = med avkrysning, mal = «Mål:»-linje uten avkrysning. */
+    kind: text("kind", { enum: ["lekse", "mal"] }).notNull().default("lekse"),
+    /** Dagen den skal være ferdig til. Null = hele uka. */
+    due_date: date("due_date", { mode: "string" }),
+    text: text("text").notNull(),
+    /** Hvor raden kom fra. «Erstatt uka» bytter bare ut rader med source = ukeplan. */
+    source: text("source", { enum: ["ukeplan", "manuell"] }).notNull().default("manuell"),
+    done: boolean("done").notNull().default(false),
+    done_at: timestamp("done_at", { withTimezone: true }),
+    position: integer("position").notNull().default(0),
+    created_by: createdBy(),
+    created_at: createdAt(),
+    updated_at: updatedAt(),
+  },
+  (t) => [
+    index("homework_items_week_due_idx").on(t.week_id, t.due_date),
+    check("homework_items_kind_ck", sql`${t.kind} in ('lekse', 'mal')`),
+    check("homework_items_source_ck", sql`${t.source} in ('ukeplan', 'manuell')`),
+  ]
+);
+
 export const messages = pgTable(
   "messages",
   {
@@ -121,10 +174,15 @@ export const documents = pgTable(
     content_type: text("content_type"),
     size_bytes: bigint("size_bytes", { mode: "number" }),
     category: text("category").notNull().default("annet"),
+    /** Satt for ukeplan-originaler. Skjules da fra Filer-lista; vises under Lekser. */
+    homework_week_id: uuid("homework_week_id").references(() => homework_weeks.id, { onDelete: "set null" }),
     created_by: createdBy(),
     created_at: createdAt(),
   },
-  (t) => [index("documents_created_idx").on(t.created_at)]
+  (t) => [
+    index("documents_created_idx").on(t.created_at),
+    index("documents_homework_week_idx").on(t.homework_week_id),
+  ]
 );
 
 export const push_subscriptions = pgTable("push_subscriptions", {

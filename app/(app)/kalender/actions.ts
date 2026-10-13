@@ -1,36 +1,21 @@
 "use server";
 
 import { and, eq, isNull } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
-import { EVENT_CATEGORIES } from "@/lib/config";
+import { CALENDAR_VIEW_COOKIE } from "@/lib/config";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
+import { EventRow, type EventRowInput, eventRowToDb } from "@/lib/event-schema";
 import { notifyOthers } from "@/lib/push";
 import { requireUser } from "@/lib/session";
 
-const EventRow = z
-  .object({
-    title: z.string().trim().min(1).max(200),
-    category: z.enum(EVENT_CATEGORIES.map((c) => c.value) as [string, ...string[]]),
-    all_day: z.boolean(),
-    starts_at: z.iso.datetime(),
-    ends_at: z.iso.datetime().nullable(),
-    location: z.string().max(200).nullable(),
-    description: z.string().max(4000).nullable(),
-    person_ids: z.array(z.uuid()).max(20),
-    series_id: z.uuid().optional(),
-  })
-  .refine((e) => !e.ends_at || e.ends_at >= e.starts_at, "Slutt må være etter start.");
-
-export type EventRowInput = z.input<typeof EventRow>;
 type Result = { error?: string };
 
-function toDb(e: z.output<typeof EventRow>) {
-  return { ...e, starts_at: new Date(e.starts_at), ends_at: e.ends_at ? new Date(e.ends_at) : null };
-}
+const toDb = eventRowToDb;
 
 export async function createEvents(rows: EventRowInput[]): Promise<Result> {
   const user = await requireUser();
@@ -86,5 +71,13 @@ export async function deleteEvent(id: string, wholeSeries: boolean): Promise<Res
   if (wholeSeries && event.series_id) await db.delete(events).where(eq(events.series_id, event.series_id));
   else await db.delete(events).where(eq(events.id, event.id));
   revalidatePath("/", "layout");
+  return {};
+}
+
+/** Valgt visning huskes i en cookie satt fra serveren (Safari kapper cookies satt fra skript til 7 dager). */
+export async function setCalendarView(mode: string): Promise<Result> {
+  await requireUser();
+  if (mode !== "uker" && mode !== "liste") return { error: "Ugyldig visning." };
+  (await cookies()).set(CALENDAR_VIEW_COOKIE, mode, { maxAge: 31536000, httpOnly: false, sameSite: "lax", path: "/" });
   return {};
 }

@@ -1,11 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { hashPassword } from "better-auth/crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { PERSON_COLORS } from "@/lib/config";
+import { BOTTOM_NAV_COOKIE, PERSON_COLORS } from "@/lib/config";
+import { MAX_NAV, MIN_NAV, NAV_ITEMS, type NavId, serializeNav } from "@/lib/nav-items";
 import { db } from "@/lib/db";
 import { account, people, push_subscriptions, session } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
@@ -99,5 +101,18 @@ export async function setPartnerPassword(personId: string, newPassword: string):
     .returning({ id: account.id });
   if (updated.length === 0) return { error: "Fant ingen passordkonto." };
   await db.delete(session).where(eq(session.userId, partner.user_id));
+  return {};
+}
+
+/** Bunnmenyen huskes i en cookie satt fra serveren (Safari kapper cookies satt fra skript til 7 dager). */
+export async function setBottomNav(ids: string[]): Promise<Result> {
+  await requireUser();
+  const unique = new Set(ids);
+  if (ids.some((id) => !NAV_ITEMS.some((i) => i.id === id)) || unique.size < MIN_NAV || unique.size > MAX_NAV) {
+    return { error: "Ugyldig valg." };
+  }
+  const value = serializeNav([...unique] as NavId[]);
+  (await cookies()).set(BOTTOM_NAV_COOKIE, value, { maxAge: 31536000, httpOnly: false, sameSite: "lax", path: "/" });
+  revalidatePath("/", "layout");
   return {};
 }

@@ -47,6 +47,7 @@ export function MobileNav({ selected }: { selected: NavId[] }) {
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-haspopup="dialog"
+            aria-expanded={moreOpen}
             className={cn(itemClass, moreActive ? "text-[var(--color-primary)]" : "text-[var(--color-muted)]")}
           >
             <Ellipsis className="h-5 w-5" aria-hidden />

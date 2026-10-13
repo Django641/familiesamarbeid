@@ -22,6 +22,8 @@ Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble 
 - [ ] «Fra tekst»/hurtigfeltet på ekte meldinger fra Skolemelding/Spond og korte notiser («konsert i morgen kl. 20»)
 - [ ] Bilde/PDF → hendelser på ekte iPhone (HEIC-bilder fra kamera/bilder, PDF fra Filer)
 - [ ] «Gjentas hver uke» på ekte iPhone, og hurtigfeltet med «Ada fotball hver tirsdag 17:30» mot ekte Claude
+- [ ] Lekser på ekte iPhone: to skjermbilder av samme plan, begge barnas planer samtidig (PDF og bilde), mot ekte Claude og Blob
+- [ ] Bunnmenyen og ⋯-arket på iPhone, og at menyvalget huskes
 - [ ] Uker-visningen på ekte iPhone (lesbarhet av stolper/emoji, trykk på dag)
 
 ## ✅ Gjort
@@ -31,6 +33,8 @@ Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble 
 - [x] **Kalender:** agenda per dag, filter per person, kategorier, flerdagsreiser, gjenta ukentlig/annenhver uke, rediger/slett (også hele serien)
 - [x] **Kalender pakke 1** (etter agentdrøfting, se `docs/KALENDER.md`): «Uker»-visning med mange uker under hverandre (ukenummer, reiser/ferier som stolper, aktiviteter som emoji, dagsark ved trykk), bryter Uker/Liste i toppfeltet (huskes per telefon), hurtigfelt «Skriv eller lim inn en avtale» øverst i Kalender med AI-forslag som bekreftes før lagring, «＋» per dag i Liste
 - [x] **Gjentakende hendelser lettere å finne** (eieren 10. okt: «huke av for trening hver tirsdag»): avkrysning «Gjentas hver uke» rett under dato/tid (før lå valget som nedtrekksliste nederst og bare ved ny hendelse). Hver uke/annenhver uke, «til og med» foreslås til skoleslutt før jul/sommer, og en linje viser «Hver tirsdag kl. 17:30 · 11 ganger, siste 18. des.». Virker også når man redigerer en enkelthendelse (blir serie fra den datoen), og på AI-forslagene i hurtigfeltet — Claude huker av selv når teksten sier «hver tirsdag». Ingen migrasjon.
+- [x] **Lekser (ukeplan fra skolen)** (eieren 13. okt, spesifikasjon i `docs/UKEPLAN.md`): last opp ukeplan (PDF eller skjermbilder, begge barna på én gang) → Claude sorterer: datoer og «ta med» (gymtøy, bibliotekbok) → kalenderen, lekser → Lekser med avkrysning, ukens mål → «Mål:»-linje. Godkjenningsark per barn, alt forhåndshuket unntatt dubletter/passerte datoer. `/lekser`: Begge/barn, uke ‹ ›, dager, avkrysning, rediger/slett med angre, originalen ett trykk unna (skjult fra Filer). Lite Hjem-kort «Lekser i dag / til i morgen». Migrasjon `0003_lekser` + `0004_lekser_sync` (kjøres automatisk).
+- [x] **Bunnmeny med ⋯** (eieren 13. okt): `Hjem · Kalender · Handle · Lekser · Beskjeder · ⋯`; Gjøremål, Filer og Innstillinger bak ⋯. Innstillinger → Bunnmeny velger fem punkter per telefon. Cookies (også kalendervisning) settes nå fra serveren, så iPhone ikke glemmer dem etter 7 dager.
 - [x] **Rettet 11. okt (meldt av eieren):** AI-forslagskortet viste «Hele dagen» bare som tekst — nå avkrysning, og klokkeslett kan settes. Test i `03-hurtigfelt`.
 - [x] **Testoppsett i repoet** (retro 9. okt): `npm test` (40 enhetstester) og `npm run e2e` (47 nettlesertester, ~50 s) mot lokal PGlite og falske Claude- og Blob-tjenester som viser hva appen faktisk sender. Dekker innlogging/invitasjon, kalender, hurtigfelt (tekst, bilde, PDF, innliming), Fra tekst-siden, navigasjon, dokumenter (privat Blob, opplasting/visning/sletting), handleliste, gjøremål, beskjeder og live-synk. Ikke dekket: Safari/iPhone, ekte Claude/Blob, push. Se `tests/README.md`.
 - [x] **Innleggingsfeltet delt opp** (`fra-tekst/`: hook, forslagskort, ren logikk) uten endret oppførsel.
@@ -63,6 +67,8 @@ Bekreftet av eieren 9. okt: hurtigfelt med tekst og skjermbilde (flybooking ble 
 - **Gjentakelse:** «gjenta ukentlig» lager enkeltkopier med felles `series_id` (enkelt, redigerbart per gang).
 - **Skolemelding:** ingen API/eksport. Dekkes av «Fra tekst».
 
+- **Lekser og meny (eieren 13. okt):** «ta med» hører hjemme i kalenderen; Lekser er lekser og ting barna skal gjøre, mål som «Mål:»-linje. Lekser i bunnmenyen (ikke fane i Kalender); Gjøremål og Filer bak ⋯, valgbart per telefon. Hjem-kortet er et tillegg, ikke hovedsak.
+
 ## ❌ Vurdert og droppet
 
 - **Uoffisiell Spond-API med brukernavn/passord** — skjør og krever lagring av passord.
@@ -78,7 +84,6 @@ Se også `docs/IDEER.md` for forslag som venter på eierens vurdering.
 - [ ] **Spond inn i kalenderen** (Spond → Google-kalender «Barna» → iCal-import med Vercel Cron). Bygget i `lib/ics-import.ts`, `app/api/cron/sync-calendars` og `innstillinger/external-calendars.tsx` i commit `50e5387`.
 
 ### P1
-- [ ] **Ukeplan (skole)** — designforslag i `docs/UKEPLAN.md`, venter på eierens svar på fire spørsmål
 - [ ] Ta stilling til idéene i `docs/IDEER.md` (produktutviklerens første runde)
 - [ ] Kalenderen: Pakke 2 (som sist, dato-chips, rediger serie, angre, ny/endret) og 3 (borte-chip, kontinuerlig rulling) — se `docs/KALENDER.md`
 - [ ] Angre ved sletting av hendelse

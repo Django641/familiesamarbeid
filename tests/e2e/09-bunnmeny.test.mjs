@@ -47,11 +47,11 @@ test("Mer-arket åpner Gjøremål, og Mer er aktiv der", async () => {
   assert.notEqual(color, home, "Mer skal være markert som aktiv");
 });
 
-test("Lekser-lenken gir plassholder, ikke 404", async () => {
+test("Lekser-lenken åpner Lekser-siden, ikke 404", async () => {
   await page.goto("/hjem");
   await nav().getByRole("link", { name: "Lekser" }).click();
   await page.waitForURL(/\/lekser/);
-  await page.getByText("Kommer snart").waitFor();
+  await page.getByRole("group", { name: "Velg barn" }).waitFor();
 });
 
 test("Innstillinger → Bunnmeny: Gjøremål inn (Lekser ut) vises nederst etter omlasting", async () => {
@@ -59,7 +59,7 @@ test("Innstillinger → Bunnmeny: Gjøremål inn (Lekser ut) vises nederst etter
   const lekser = page.getByRole("checkbox", { name: "Lekser" });
   const gjoremal = page.getByRole("checkbox", { name: "Gjøremål" });
   // Fem er valgt: Gjøremål kan ikke legges til før noe tas bort
-  await gjoremal.click();
+  await gjoremal.click({ force: true }); // aria-disabled: trykket skal ikke gjøre noe
   assert.equal(await gjoremal.getAttribute("aria-checked"), "false");
   await lekser.click();
   await gjoremal.click();

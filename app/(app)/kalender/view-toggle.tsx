@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { CALENDAR_VIEW_COOKIE } from "@/lib/config";
 import { cn } from "@/lib/utils";
+
+import { setCalendarView } from "./actions";
 
 export type CalendarMode = "uker" | "liste";
 
@@ -20,8 +21,10 @@ export function ViewToggle({ mode }: { mode: CalendarMode }) {
 
   function choose(next: CalendarMode) {
     if (next === mode || pending) return;
-    document.cookie = `${CALENDAR_VIEW_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
-    startTransition(() => router.replace(`/kalender?visning=${next}`, { scroll: false }));
+    startTransition(async () => {
+      await setCalendarView(next).catch(() => {});
+      router.replace(`/kalender?visning=${next}`, { scroll: false });
+    });
   }
 
   return (

@@ -1,13 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { aiErrorMessage, attachmentFromFile, GRADE_RULE, loadFamily, MAX_FILE_BYTES, todayInfo } from "@/lib/ai-route";
 import { type AiAttachment, type AiCallMeta, isAiConfigured, structuredCall, userContent } from "@/lib/anthropic";
 import { EVENT_CATEGORIES } from "@/lib/config";
-import { db } from "@/lib/db";
-import { people as peopleTable } from "@/lib/db/schema";
 import { getSession } from "@/lib/session";
-import { osloDateKey } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,10 +19,6 @@ export const maxDuration = 60;
 
 const RequestSchema = z.object({ text: z.string().trim().min(3).max(8000) });
 const NoteSchema = z.string().trim().max(2000);
-
-const MAX_FILE_BYTES = 4 * 1024 * 1024;
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
-type ImageType = (typeof IMAGE_TYPES)[number];
 
 /** Leser forespørselen: tekst, eller fil (+ ev. tekst). Returnerer feilmelding som streng. */
 type Input = { text: string; attachments: AiAttachment[]; log: { kind: string; bytes: number; mediaType?: string } };
@@ -44,13 +37,8 @@ async function readInput(request: Request): Promise<Input | string> {
   if (!(file instanceof File) || file.size === 0) return "Fant ingen fil.";
   if (file.size > MAX_FILE_BYTES) return "Fila er for stor (maks 4 MB). Prøv et skjermbilde i stedet.";
   const note = NoteSchema.safeParse(form?.get("tekst") ?? "");
-  const data = Buffer.from(await file.arrayBuffer()).toString("base64");
-
-  let attachment: AiAttachment;
-  if (file.type === "application/pdf") attachment = { kind: "pdf", data };
-  else if ((IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    attachment = { kind: "image", mediaType: file.type as ImageType, data };
-  } else return "Bare bilder (JPEG, PNG, WebP) og PDF kan leses.";
+  const attachment = await attachmentFromFile(file);
+  if (typeof attachment === "string") return attachment;
 
   const extra = note.success && note.data ? `\n\nKommentar fra den som lastet opp: ${note.data}` : "";
   return {
@@ -149,16 +137,8 @@ export async function POST(request: Request) {
   const input = await readInput(request);
   if (typeof input === "string") return NextResponse.json({ error: input }, { status: 400 });
 
-  const people = await db
-    .select({ name: peopleTable.name, kind: peopleTable.kind, user_id: peopleTable.user_id, hints: peopleTable.hints })
-    .from(peopleTable);
-  const family =
-    people.map((p) => `- ${p.name} (${p.kind})${p.hints ? `: ${p.hints.replace(/\s+/g, " ")}` : ""}`).join("\n") ||
-    "ukjent";
-  const writer = people.find((p) => p.user_id === session.user.id)?.name;
-
-  const today = osloDateKey(new Date());
-  const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString("nb-NO", { weekday: "long", timeZone: "UTC" });
+  const { family, writer } = await loadFamily(session.user.id);
+  const { today, weekday } = todayInfo();
 
   const system = `Du hjelper en norsk familie med å legge hendelser i en delt kalender. Du får en tekst (melding fra Spond, Skolemelding, e-post, SMS e.l.) og skal hente ut alle konkrete hendelser med dato.
 
@@ -171,7 +151,7 @@ Du kan få et bilde (skjermbilde fra Spond/Skolemelding/e-post, foto av et skriv
 Regler:
 - Ta bare med hendelser som har en dato. Ikke finn på noe.
 - Kategorier: avtale, reise, jobb, skole (skole/barnehage/SFO/foreldremøter), aktivitet (fotball, trening, kamper, cuper), bursdag, annet.
-- «people»: bruk bare navn fra familielista. Bruk kjennetegnene til å koble meldingen til riktig person: klasse/trinn, skole, lag, aktivitet, arbeidsplass. En melding til «4. trinn» eller «4B» gjelder barnet som går der. Klassetrinn regnes ut fra fødselsår: trinn = startåret for skoleåret − fødselsår − 5 (skoleåret starter i august; født 2017 → 4. trinn i skoleåret 2026/27). Står både fødselsår og en klasse i kjennetegnene, gjelder fødselsåret for trinnet (klassen kan være fra i fjor), mens bokstaven (f.eks. «B» i 4B) fortsatt gjelder. Er det uklart hvem det gjelder, la «people» stå tom heller enn å gjette.
+- «people»: bruk bare navn fra familielista. Bruk kjennetegnene til å koble meldingen til riktig person: klasse/trinn, skole, lag, aktivitet, arbeidsplass. En melding til «4. trinn» eller «4B» gjelder barnet som går der. ${GRADE_RULE} Er det uklart hvem det gjelder, la «people» stå tom heller enn å gjette.
 - Frister («svar innen», «betal innen») blir egne heldagshendelser med tittel som starter med «Frist:».
 - Tittelen skal være kort og forståelig uten resten av meldingen.
 - Faste ting som gjentas hver uke («fotballtrening hver tirsdag 17:30», «svømming annenhver torsdag til 12. mars»): ÉN hendelse på første kommende dato, med repeat = «weekly» eller «biweekly», og repeat_until = siste dato hvis den er oppgitt (ellers tom streng). Ikke lag én hendelse per uke. Står datoene oppramset (f.eks. en terminliste), blir hver dato en egen hendelse med repeat = «none».
@@ -204,14 +184,10 @@ Regler:
   } catch (error) {
     // Detaljene logges på serveren; brukeren får en forståelig norsk melding.
     console.error("parse-events: AI-kallet feilet", error);
-    let message = "AI-tjenesten svarte ikke. Prøv igjen om litt.";
-    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-      message = "AI-nøkkelen virker ikke. Sjekk ANTHROPIC_API_KEY i Vercel.";
-    } else if (error instanceof Anthropic.RateLimitError) {
-      message = "AI-tjenesten er travel akkurat nå. Prøv igjen om et minutt.";
-    } else if (error instanceof Anthropic.BadRequestError) {
-      message = "AI-en klarte ikke å lese dette. Prøv et tydeligere bilde eller lim inn teksten.";
-    }
+    const message = aiErrorMessage(
+      error,
+      "AI-en klarte ikke å lese dette. Prøv et tydeligere bilde eller lim inn teksten."
+    );
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
