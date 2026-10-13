@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Ellipsis, Settings } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 
 import { Sheet } from "@/components/ui/sheet";
 import { NAV_ITEMS, type NavId, isMoreActive, isPathActive } from "@/lib/nav-items";
@@ -65,11 +65,6 @@ export function MobileNav({ selected }: { selected: NavId[] }) {
               </MoreLink>
             </li>
           ))}
-          <li>
-            <MoreLink href="/innstillinger" label="Innstillinger" onNavigate={() => setMoreOpen(false)}>
-              <Settings className="h-5 w-5" aria-hidden />
-            </MoreLink>
-          </li>
         </ul>
       </Sheet>
     </nav>

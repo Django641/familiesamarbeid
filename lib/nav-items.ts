@@ -59,8 +59,7 @@ export function isPathActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Er siden bak «Mer»? (ikke valgt i menyen, men et kjent punkt eller Innstillinger) */
+/** Er siden bak «Mer»? (et kjent punkt som ikke er valgt i menyen; Innstillinger nås via tannhjulet) */
 export function isMoreActive(pathname: string, selected: readonly NavId[]): boolean {
-  if (isPathActive(pathname, "/innstillinger")) return true;
   return NAV_ITEMS.some((i) => !selected.includes(i.id) && isPathActive(pathname, i.href));
 }

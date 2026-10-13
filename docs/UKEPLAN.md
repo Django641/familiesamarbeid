@@ -6,7 +6,7 @@ Besluttet av eieren 13. okt etter forslag fra `ux-designer` og `brukerstemme`. D
 1. På mobil kan jeg laste opp ukeplanen (PDF eller ett/flere skjermbilder) for Ada og/eller Lea i én operasjon.
 2. Jeg får ett godkjenningsark per barn der Claude har sortert: **datoer og «ta med» → kalenderen**, **lekser/oppgaver → Lekser**, **ukens mål → «Mål:»-linje**. Alt er forhåndshuket unntatt det som alt finnes i kalenderen. Jeg kan flytte en rad til en annen gruppe, endre dag/tekst eller fjerne den før jeg lagrer. Ingenting lagres før jeg trykker Lagre.
 3. Under **Lekser** i bunnmenyen ser jeg uka per barn (Begge/Ada/Lea), dag for dag, og kan krysse av lekser. Den andre telefonen ser det innen ~5 s. Originalen er ett trykk unna.
-4. Bunnmenyen er `Hjem · Kalender · Handle · Lekser · Beskjeder · ⋯`. ⋯ viser resten (Gjøremål, Filer, Innstillinger). Under Innstillinger → Bunnmeny velger jeg selv hvilke fem som står nederst (huskes per telefon).
+4. Bunnmenyen er `Hjem · Kalender · Handle · Lekser · Beskjeder · ⋯`. ⋯ viser resten (Gjøremål, Filer); Innstillinger via tannhjulet. Under Innstillinger → Bunnmeny velger jeg selv hvilke fem som står nederst (huskes per telefon).
 5. På Hjem ser jeg et lite kort «Lekser i dag / til i morgen» (tillegg, ikke hovedsak).
 
 ## Fordeling
@@ -21,7 +21,7 @@ Besluttet av eieren 13. okt etter forslag fra `ux-designer` og `brukerstemme`. D
 **Dubletter:** en kalenderrad er ikke forhåndshuket hvis det finnes en hendelse samme Oslo-dato, samme barn (person_ids inneholder barnet) og nesten lik tittel (normalisert, uten emoji/store bokstaver) — gjelder også gjentakende «Gymtøy hver torsdag». Passerte datoer er heller ikke forhåndshuket.
 
 ## Navigasjon
-- `components/mobile-nav.tsx`: fem valgte punkter + «⋯ Mer» (alltid sist). Mer åpner `Sheet` med de øvrige sidene + Innstillinger.
+- `components/mobile-nav.tsx`: fem valgte punkter + «⋯ Mer» (alltid sist). Mer åpner `Sheet` med de øvrige sidene.
 - Tilgjengelige punkter: Hjem, Kalender, Handle, Lekser, Gjøremål, Beskjeder, Filer. Standard: Hjem, Kalender, Handle, Lekser, Beskjeder.
 - Valget huskes per telefon i cookie `bunnmeny` (kommaseparert, valideres mot lista; ugyldig → standard). Leses på server i layout så menyen ikke blinker.
 - Innstillinger → Bunnmeny: liste med avkrysning, maks 5 (og min 1). Hjem anbefales, men er ikke tvunget.

@@ -38,10 +38,10 @@ describe("toggleNav", () => {
 });
 
 describe("isMoreActive", () => {
-  test("aktiv for sider som ikke står i menyen, og Innstillinger", () => {
+  test("aktiv for sider som ikke står i menyen, ikke for Innstillinger", () => {
     assert.equal(isMoreActive("/gjoremal", [...DEFAULT_NAV]), true);
     assert.equal(isMoreActive("/dokumenter/abc", [...DEFAULT_NAV]), true);
-    assert.equal(isMoreActive("/innstillinger", [...DEFAULT_NAV]), true);
+    assert.equal(isMoreActive("/innstillinger", [...DEFAULT_NAV]), false);
     assert.equal(isMoreActive("/kalender", [...DEFAULT_NAV]), false);
     assert.equal(isMoreActive("/gjoremal", ["hjem", "gjoremal"]), false);
   });

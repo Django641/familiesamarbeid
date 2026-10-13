@@ -38,7 +38,8 @@ test("Mer-arket åpner Gjøremål, og Mer er aktiv der", async () => {
   await nav().getByRole("button", { name: "Mer" }).click();
   const sheet = page.getByRole("dialog", { name: "Mer" });
   await sheet.getByRole("link", { name: "Filer" }).waitFor();
-  await sheet.getByRole("link", { name: "Innstillinger" }).waitFor();
+  // Innstillinger nås via tannhjulet øverst, ikke via Mer (eieren 13. okt).
+  assert.equal(await sheet.getByRole("link", { name: "Innstillinger" }).count(), 0);
   await sheet.getByRole("link", { name: "Gjøremål" }).click();
   await page.waitForURL(/\/gjoremal/);
   // Mer er aktiv (blå) når siden ligger bak den — sjekk via stil på knappen
